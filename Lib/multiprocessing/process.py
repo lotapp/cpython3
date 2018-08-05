@@ -2,6 +2,7 @@
 # Module providing the `Process` class which emulates `threading.Thread`
 #
 # multiprocessing/process.py
+# https://github.com/python/cpython/blob/3.7/Lib/multiprocessing/process.py
 #
 # Copyright (c) 2006-2008, R Oudkerk
 # Licensed to PSF under a Contributor Agreement.
@@ -33,11 +34,13 @@ except OSError:
 # Public functions
 #
 
+
 def current_process():
     '''
     Return process object representing the current process
     '''
     return _current_process
+
 
 def active_children():
     '''
@@ -46,9 +49,11 @@ def active_children():
     _cleanup()
     return list(_children)
 
+
 #
 #
 #
+
 
 def _cleanup():
     # check for processes which have finished
@@ -56,24 +61,33 @@ def _cleanup():
         if p._popen.poll() is not None:
             _children.discard(p)
 
+
 #
 # The `Process` class
 #
 
+# 3.4.x开始，Process有了一个BaseProcess
 class BaseProcess(object):
     '''
     Process objects represent activity that is run in a separate process
 
     The class is analogous to `threading.Thread`
     '''
+
     def _Popen(self):
         raise NotImplementedError
 
-    def __init__(self, group=None, target=None, name=None, args=(), kwargs={},
-                 *, daemon=None):
+    def __init__(self,
+                 group=None,
+                 target=None,
+                 name=None,
+                 args=(),
+                 kwargs={},
+                 *,
+                 daemon=None):
         assert group is None, 'group argument must be None for now'
         count = next(_process_counter)
-        self._identity = _current_process._identity + (count,)
+        self._identity = _current_process._identity + (count, )
         self._config = _current_process._config.copy()
         self._parent_pid = os.getpid()
         self._popen = None
@@ -131,15 +145,15 @@ class BaseProcess(object):
         self._popen.kill()
 
     def join(self, timeout=None):
-        '''
-        Wait until child process terminates
-        '''
+        '''等到子进程终止'''
         self._check_closed()
-        assert self._parent_pid == os.getpid(), 'can only join a child process'
-        assert self._popen is not None, 'can only join a started process'
-        res = self._popen.wait(timeout)
+        # 断言（False就触发异常，提示就是后面的内容
+        # 开发中用的比较多，部署的时候可以python3 -O xxx 去除所以断言
+        assert self._parent_pid == os.getpid(), '只能 join 一个子进程'
+        assert self._popen is not None, '只能加入一个已启动的进程'
+        res = self._popen.wait(timeout)  # 本质就是用了我们之前讲的wait系列
         if res is not None:
-            _children.discard(self)
+            _children.discard(self)  # 销毁子进程
 
     def is_alive(self):
         '''
@@ -169,8 +183,9 @@ class BaseProcess(object):
         '''
         if self._popen is not None:
             if self._popen.poll() is None:
-                raise ValueError("Cannot close a process while it is still running. "
-                                 "You should first call join() or terminate().")
+                raise ValueError(
+                    "Cannot close a process while it is still running. "
+                    "You should first call join() or terminate().")
             self._popen.close()
             self._popen = None
             del self._sentinel
@@ -268,8 +283,8 @@ class BaseProcess(object):
             else:
                 status = 'stopped[%s]' % _exitcode_to_name.get(status, status)
 
-        return '<%s(%s, %s%s)>' % (type(self).__name__, self._name,
-                                   status, self.daemon and ' daemon' or '')
+        return '<%s(%s, %s%s)>' % (type(self).__name__, self._name, status,
+                                   self.daemon and ' daemon' or '')
 
     ##
 
@@ -318,34 +333,37 @@ class BaseProcess(object):
 
         return exitcode
 
+
 #
 # We subclass bytes to avoid accidental transmission of auth keys over network
 #
+
 
 class AuthenticationString(bytes):
     def __reduce__(self):
         from .context import get_spawning_popen
         if get_spawning_popen() is None:
-            raise TypeError(
-                'Pickling an AuthenticationString object is '
-                'disallowed for security reasons'
-                )
-        return AuthenticationString, (bytes(self),)
+            raise TypeError('Pickling an AuthenticationString object is '
+                            'disallowed for security reasons')
+        return AuthenticationString, (bytes(self), )
+
 
 #
 # Create object representing the main process
 #
 
-class _MainProcess(BaseProcess):
 
+class _MainProcess(BaseProcess):
     def __init__(self):
         self._identity = ()
         self._name = 'MainProcess'
         self._parent_pid = None
         self._popen = None
         self._closed = False
-        self._config = {'authkey': AuthenticationString(os.urandom(32)),
-                        'semprefix': '/mp'}
+        self._config = {
+            'authkey': AuthenticationString(os.urandom(32)),
+            'semprefix': '/mp'
+        }
         # Note that some versions of FreeBSD only allow named
         # semaphores to have names of up to 14 characters.  Therefore
         # we choose a short prefix.
@@ -372,7 +390,7 @@ del _MainProcess
 _exitcode_to_name = {}
 
 for name, signum in list(signal.__dict__.items()):
-    if name[:3]=='SIG' and '_' not in name:
+    if name[:3] == 'SIG' and '_' not in name:
         _exitcode_to_name[-signum] = name
 
 # For debug and leak testing
