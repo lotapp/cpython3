@@ -420,8 +420,9 @@ class Pool(object):
     def _handle_workers(pool):
         thread = threading.current_thread()
 
-        # Keep maintaining workers until the cache gets drained, unless the pool
-        # is terminated.
+        # Keep maintaining workers until the cache gets drained,
+        # unless the pool is terminated.
+        # 除非池终止，否则继续维护工作程序直到缓存耗尽
         while thread._state == RUN or (pool._cache
                                        and thread._state != TERMINATE):
             pool._maintain_pool()
