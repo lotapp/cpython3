@@ -164,6 +164,7 @@ def _helper_reraises_exception(ex):
 class Pool(object):
     '''
     Class which supports an async version of applying functions to arguments.
+    支持将函数应用于参数的异步版本的类。
     '''
     _wrap_exception = True
 
@@ -188,6 +189,7 @@ class Pool(object):
         if processes is None:
             processes = os.cpu_count() or 1  # Pool的默认大小是CPU的核数
         if processes < 1:
+            # 进程数必须至少为1
             raise ValueError("Number of processes must be at least 1")
 
         if initializer is not None and not callable(initializer):
@@ -271,13 +273,30 @@ class Pool(object):
 
     def apply(self, func, args=(), kwds={}):
         '''
-        Equivalent of `func(*args, **kwds)`.
-        Pool must be running.
+        相当于`func（* args，** kwds）`(池必须运行)，内部也是调用了`apply_async`
+        Equivalent of `func(*args, **kwds)`. Pool must be running.
         '''
         return self.apply_async(func, args, kwds).get()
 
+    def apply_async(self,
+                    func,
+                    args=(),
+                    kwds={},
+                    callback=None,
+                    error_callback=None):
+        '''
+        `apply（）`方法的异步版本。
+        '''
+        if self._state != RUN:
+            raise ValueError("Pool not running")
+        result = ApplyResult(self._cache, callback, error_callback)
+        # FIFO有名管道队列
+        self._taskqueue.put(([(result._job, 0, func, args, kwds)], None))
+        return result
+
     def map(self, func, iterable, chunksize=None):
         '''
+        将`func`应用于`iterable`中的每个元素，收集结果在返回的列表中。
         Apply `func` to each element in `iterable`, collecting the results
         in a list that is returned.
         '''
@@ -355,21 +374,6 @@ class Pool(object):
             self._taskqueue.put((self._guarded_task_generation(
                 result._job, mapstar, task_batches), result._set_length))
             return (item for chunk in result for item in chunk)
-
-    def apply_async(self,
-                    func,
-                    args=(),
-                    kwds={},
-                    callback=None,
-                    error_callback=None):
-        '''
-        Asynchronous version of `apply()` method.
-        '''
-        if self._state != RUN:
-            raise ValueError("Pool not running")
-        result = ApplyResult(self._cache, callback, error_callback)
-        self._taskqueue.put(([(result._job, 0, func, args, kwds)], None))
-        return result
 
     def map_async(self,
                   func,
@@ -641,8 +645,6 @@ class Pool(object):
 #
 # Class whose instances are returned by `Pool.apply_async()`
 #
-
-
 class ApplyResult(object):
     def __init__(self, cache, callback, error_callback):
         self._event = threading.Event()
