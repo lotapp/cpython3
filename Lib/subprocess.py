@@ -2,6 +2,9 @@
 #
 # For more information about this module, see PEP 324.
 #
+# https://github.com/lotapp/cpython3/blob/master/Lib/subprocess.py
+#
+#
 # Copyright (c) 2003-2005 by Peter Astrand <astrand@lysator.liu.se>
 #
 # Licensed to PSF under a Contributor Agreement.
@@ -418,8 +421,11 @@ def check_output(*popenargs, timeout=None, **kwargs):
 
 
 class CompletedProcess(object):
-    """A process that has finished running.
+    """
+    已完成运行的进程
+    A process that has finished running.
 
+    run方法的返回值类型
     This is returned by run().
 
     Attributes:
@@ -436,6 +442,7 @@ class CompletedProcess(object):
         self.stderr = stderr
 
     def __repr__(self):
+        """对象按指定的格式显示"""
         args = [
             'args={!r}'.format(self.args),
             'returncode={!r}'.format(self.returncode)
@@ -447,7 +454,7 @@ class CompletedProcess(object):
         return "{}({})".format(type(self).__name__, ', '.join(args))
 
     def check_returncode(self):
-        """Raise CalledProcessError if the exit code is non-zero."""
+        """如果退出代码非零，则引发CalledProcessError"""
         if self.returncode:
             raise CalledProcessError(self.returncode, self.args, self.stdout,
                                      self.stderr)
@@ -459,40 +466,56 @@ def run(*popenargs,
         timeout=None,
         check=False,
         **kwargs):
-    """Run command with arguments and return a CompletedProcess instance.
+    """
+    使用参数运行命令并返回CompletedProcess实例。
+    Run command with arguments and return a CompletedProcess instance.
 
+    返回的实例将具有 args，returncode，stdout 和 stderr。
+    默认情况下，不捕获stdout和stderr以及这些那些属性就没有。
+    传递stdout = PIPE 或 stderr = PIPE 以捕获它们。
     The returned instance will have attributes args, returncode, stdout and
     stderr. By default, stdout and stderr are not captured, and those attributes
     will be None. Pass stdout=PIPE and/or stderr=PIPE in order to capture them.
 
+    如果check为True且退出代码为非零，则会引发CalledProcessError。如果这些流被捕获，
+    CalledProcessError对象将具有返回码在returncode属性中（包含output 和 stderr属性）
     If check is True and the exit code was non-zero, it raises a
     CalledProcessError. The CalledProcessError object will have the return code
     in the returncode attribute, and output & stderr attributes if those streams
     were captured.
 
+    如果给出超时，并且该过程花费的时间太长，则会引发TimeoutExpired异常。
     If timeout is given, and the process takes too long, a TimeoutExpired
     exception will be raised.
 
+    有一个可选参数“input”，允许您将字节或字符串传递给子进程的stdin。
+    如果使用此参数，则可能不会使用Popen构造函数的“stdin”参数，因为它将在内部使用。
     There is an optional argument "input", allowing you to
     pass bytes or a string to the subprocess's stdin.  If you use this argument
     you may not also use the Popen constructor's "stdin" argument, as
     it will be used internally.
 
+    默认情况下，所有通信都以字节为单位，因此任何“输入”应为字节，stdout和stderr将为字节。
+    如果在文本模式下，任何“输入”应该是一个字符串，stdout和stderr将是根据区域设置编码解码的字符串，
+    或者如果设置则是“编码”。 通过设置任何文本，编码，错误或universal_newlines来触发文本模式。
     By default, all communication is in bytes, and therefore any "input" should
     be bytes, and the stdout and stderr will be bytes. If in text mode, any
     "input" should be a string, and stdout and stderr will be strings decoded
     according to locale encoding, or by "encoding" if set. Text mode is
     triggered by setting any of text, encoding, errors or universal_newlines.
 
+    其他参数与Popen构造函数相同
     The other arguments are the same as for the Popen constructor.
     """
     if input is not None:
         if 'stdin' in kwargs:
+            # stdin和输入参数可能都不会被使用
             raise ValueError('stdin and input arguments may not both be used.')
         kwargs['stdin'] = PIPE
 
     if capture_output:
         if ('stdout' in kwargs) or ('stderr' in kwargs):
+            # 不能和capture_outpu一起使用stdout 或 stderr
             raise ValueError('stdout and stderr arguments may not be used '
                              'with capture_output.')
         kwargs['stdout'] = PIPE
@@ -506,8 +529,9 @@ def run(*popenargs,
             stdout, stderr = process.communicate()
             raise TimeoutExpired(
                 process.args, timeout, output=stdout, stderr=stderr)
-        except:  # Including KeyboardInterrupt, communicate handled that.
+        except:  # 包括KeyboardInterrupt的通信处理。
             process.kill()
+            # 不用使用process.wait（），.__ exit__为我们做了这件事。
             # We don't call process.wait() as .__exit__ does that for us.
             raise
         retcode = process.poll()
