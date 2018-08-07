@@ -336,6 +336,7 @@ class Pool(object):
     def imap(self, func, iterable, chunksize=1):
         '''
         Equivalent of `map()` -- can be MUCH slower than `Pool.map()`.
+        和map差不多，比pool.map慢点，返回一个可迭代对象
         '''
         if self._state != RUN:
             raise ValueError("Pool not running")
@@ -644,6 +645,7 @@ class Pool(object):
 
 #
 # Class whose instances are returned by `Pool.apply_async()`
+# 异步方法返回值
 #
 class ApplyResult(object):
     def __init__(self, cache, callback, error_callback):
@@ -745,8 +747,9 @@ class IMapIterator(object):
         cache[self._job] = self
 
     def __iter__(self):
-        return self
+        return self  # 返回一个迭代器
 
+    # 实现next方法
     def next(self, timeout=None):
         with self._cond:
             try:
