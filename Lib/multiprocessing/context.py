@@ -57,7 +57,10 @@ class BaseContext(object):
         return m
 
     def Pipe(self, duplex=True):
-        '''Returns two connection object connected by a pipe'''
+        '''
+        返回由管道连接的两个连接对象
+        Returns two connection object connected by a pipe
+        '''
         from .connection import Pipe
         return Pipe(duplex)
 

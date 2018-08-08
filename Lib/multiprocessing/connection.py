@@ -7,7 +7,7 @@
 # Licensed to PSF under a Contributor Agreement.
 #
 
-__all__ = [ 'Client', 'Listener', 'Pipe', 'wait' ]
+__all__ = ['Client', 'Listener', 'Pipe', 'wait']
 
 import io
 import os
@@ -59,12 +59,15 @@ if sys.platform == 'win32':
 def _init_timeout(timeout=CONNECTION_TIMEOUT):
     return time.monotonic() + timeout
 
+
 def _check_timeout(t):
     return time.monotonic() > t
+
 
 #
 #
 #
+
 
 def arbitrary_address(family):
     '''
@@ -75,10 +78,12 @@ def arbitrary_address(family):
     elif family == 'AF_UNIX':
         return tempfile.mktemp(prefix='listener-', dir=util.get_temp_dir())
     elif family == 'AF_PIPE':
-        return tempfile.mktemp(prefix=r'\\.\pipe\pyc-%d-%d-' %
-                               (os.getpid(), next(_mmap_counter)), dir="")
+        return tempfile.mktemp(
+            prefix=r'\\.\pipe\pyc-%d-%d-' % (os.getpid(), next(_mmap_counter)),
+            dir="")
     else:
         raise ValueError('unrecognized family')
+
 
 def _validate_family(family):
     '''
@@ -91,6 +96,7 @@ def _validate_family(family):
         # double check
         if not hasattr(socket, family):
             raise ValueError('Family %s is not recognized.' % family)
+
 
 def address_type(address):
     '''
@@ -107,9 +113,11 @@ def address_type(address):
     else:
         raise ValueError('address type of %r unrecognized' % address)
 
+
 #
 # Connection classes
 #
+
 
 class _ConnectionBase:
     _handle = None
@@ -239,8 +247,7 @@ class _ConnectionBase:
                 raise BufferTooShort(result.getvalue())
             # Message can fit in dest
             result.seek(0)
-            result.readinto(m[offset // itemsize :
-                              (offset + size) // itemsize])
+            result.readinto(m[offset // itemsize:(offset + size) // itemsize])
             return size
 
     def recv(self):
@@ -280,8 +287,8 @@ if _winapi:
             ov, err = _winapi.WriteFile(self._handle, buf, overlapped=True)
             try:
                 if err == _winapi.ERROR_IO_PENDING:
-                    waitres = _winapi.WaitForMultipleObjects(
-                        [ov.event], False, INFINITE)
+                    waitres = _winapi.WaitForMultipleObjects([ov.event], False,
+                                                             INFINITE)
                     assert waitres == WAIT_OBJECT_0
             except:
                 ov.cancel()
@@ -298,8 +305,8 @@ if _winapi:
             else:
                 bsize = 128 if maxsize is None else min(maxsize, 128)
                 try:
-                    ov, err = _winapi.ReadFile(self._handle, bsize,
-                                                overlapped=True)
+                    ov, err = _winapi.ReadFile(
+                        self._handle, bsize, overlapped=True)
                     try:
                         if err == _winapi.ERROR_IO_PENDING:
                             waitres = _winapi.WaitForMultipleObjects(
@@ -321,11 +328,12 @@ if _winapi:
                         raise EOFError
                     else:
                         raise
-            raise RuntimeError("shouldn't get here; expected KeyboardInterrupt")
+            raise RuntimeError(
+                "shouldn't get here; expected KeyboardInterrupt")
 
         def _poll(self, timeout):
-            if (self._got_empty_message or
-                        _winapi.PeekNamedPipe(self._handle)[0] != 0):
+            if (self._got_empty_message
+                    or _winapi.PeekNamedPipe(self._handle)[0] != 0):
                 return True
             return bool(wait([self], timeout))
 
@@ -352,13 +360,17 @@ class Connection(_ConnectionBase):
     """
 
     if _winapi:
+
         def _close(self, _close=_multiprocessing.closesocket):
             _close(self._handle)
+
         _write = _multiprocessing.send
         _read = _multiprocessing.recv
     else:
+
         def _close(self, _close=os.close):
             _close(self._handle)
+
         _write = os.write
         _read = os.read
 
@@ -419,6 +431,7 @@ class Connection(_ConnectionBase):
 # Public functions
 #
 
+
 class Listener(object):
     '''
     Returns a listener object.
@@ -426,6 +439,7 @@ class Listener(object):
     This is a wrapper for a bound socket which is 'listening' for
     connections, or for a Windows named pipe.
     '''
+
     def __init__(self, address=None, family=None, backlog=1, authkey=None):
         family = family or (address and address_type(address)) \
                  or default_family
@@ -505,25 +519,28 @@ if sys.platform != 'win32':
 
     def Pipe(duplex=True):
         '''
+        返回管道两端的一对连接对象
         Returns pair of connection objects at either end of a pipe
         '''
         if duplex:
+            # 双工内部其实是socket系列（下次讲）
             s1, s2 = socket.socketpair()
             s1.setblocking(True)
             s2.setblocking(True)
             c1 = Connection(s1.detach())
             c2 = Connection(s2.detach())
         else:
+            # 这部分就是我们上次讲的pipe管道
             fd1, fd2 = os.pipe()
             c1 = Connection(fd1, writable=False)
             c2 = Connection(fd2, readable=False)
-
         return c1, c2
 
 else:
-
+    # win平台的一系列处理
     def Pipe(duplex=True):
         '''
+        返回管道两端的一对连接对象
         Returns pair of connection objects at either end of a pipe
         '''
         address = arbitrary_address('AF_PIPE')
@@ -537,21 +554,22 @@ else:
             obsize, ibsize = 0, BUFSIZE
 
         h1 = _winapi.CreateNamedPipe(
-            address, openmode | _winapi.FILE_FLAG_OVERLAPPED |
-            _winapi.FILE_FLAG_FIRST_PIPE_INSTANCE,
-            _winapi.PIPE_TYPE_MESSAGE | _winapi.PIPE_READMODE_MESSAGE |
-            _winapi.PIPE_WAIT,
-            1, obsize, ibsize, _winapi.NMPWAIT_WAIT_FOREVER,
+            address,
+            openmode | _winapi.FILE_FLAG_OVERLAPPED
+            | _winapi.FILE_FLAG_FIRST_PIPE_INSTANCE,
+            _winapi.PIPE_TYPE_MESSAGE | _winapi.PIPE_READMODE_MESSAGE
+            | _winapi.PIPE_WAIT,
+            1,
+            obsize,
+            ibsize,
+            _winapi.NMPWAIT_WAIT_FOREVER,
             # default security descriptor: the handle cannot be inherited
-            _winapi.NULL
-            )
-        h2 = _winapi.CreateFile(
-            address, access, 0, _winapi.NULL, _winapi.OPEN_EXISTING,
-            _winapi.FILE_FLAG_OVERLAPPED, _winapi.NULL
-            )
-        _winapi.SetNamedPipeHandleState(
-            h2, _winapi.PIPE_READMODE_MESSAGE, None, None
-            )
+            _winapi.NULL)
+        h2 = _winapi.CreateFile(address, access, 0, _winapi.NULL,
+                                _winapi.OPEN_EXISTING,
+                                _winapi.FILE_FLAG_OVERLAPPED, _winapi.NULL)
+        _winapi.SetNamedPipeHandleState(h2, _winapi.PIPE_READMODE_MESSAGE,
+                                        None, None)
 
         overlapped = _winapi.ConnectNamedPipe(h1, overlapped=True)
         _, err = overlapped.GetOverlappedResult(True)
@@ -562,21 +580,24 @@ else:
 
         return c1, c2
 
+
 #
 # Definitions for connections based on sockets
 #
+
 
 class SocketListener(object):
     '''
     Representation of a socket which is bound to an address and listening
     '''
+
     def __init__(self, address, family, backlog=1):
         self._socket = socket.socket(getattr(socket, family))
         try:
             # SO_REUSEADDR has different semantics on Windows (issue #2550).
             if os.name == 'posix':
-                self._socket.setsockopt(socket.SOL_SOCKET,
-                                        socket.SO_REUSEADDR, 1)
+                self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR,
+                                        1)
             self._socket.setblocking(True)
             self._socket.bind(address)
             self._socket.listen(backlog)
@@ -589,8 +610,7 @@ class SocketListener(object):
 
         if family == 'AF_UNIX':
             self._unlink = util.Finalize(
-                self, os.unlink, args=(address,), exitpriority=0
-                )
+                self, os.unlink, args=(address, ), exitpriority=0)
         else:
             self._unlink = None
 
@@ -614,10 +634,11 @@ def SocketClient(address):
     Return a connection object connected to the socket given by `address`
     '''
     family = address_type(address)
-    with socket.socket( getattr(socket, family) ) as s:
+    with socket.socket(getattr(socket, family)) as s:
         s.setblocking(True)
         s.connect(address)
         return Connection(s.detach())
+
 
 #
 # Definitions for connections based on named pipes
@@ -629,6 +650,7 @@ if sys.platform == 'win32':
         '''
         Representation of a named pipe
         '''
+
         def __init__(self, address, backlog=None):
             self._address = address
             self._handle_queue = [self._new_handle(first=True)]
@@ -636,21 +658,20 @@ if sys.platform == 'win32':
             self._last_accepted = None
             util.sub_debug('listener created with address=%r', self._address)
             self.close = util.Finalize(
-                self, PipeListener._finalize_pipe_listener,
-                args=(self._handle_queue, self._address), exitpriority=0
-                )
+                self,
+                PipeListener._finalize_pipe_listener,
+                args=(self._handle_queue, self._address),
+                exitpriority=0)
 
         def _new_handle(self, first=False):
             flags = _winapi.PIPE_ACCESS_DUPLEX | _winapi.FILE_FLAG_OVERLAPPED
             if first:
                 flags |= _winapi.FILE_FLAG_FIRST_PIPE_INSTANCE
             return _winapi.CreateNamedPipe(
-                self._address, flags,
-                _winapi.PIPE_TYPE_MESSAGE | _winapi.PIPE_READMODE_MESSAGE |
-                _winapi.PIPE_WAIT,
+                self._address, flags, _winapi.PIPE_TYPE_MESSAGE
+                | _winapi.PIPE_READMODE_MESSAGE | _winapi.PIPE_WAIT,
                 _winapi.PIPE_UNLIMITED_INSTANCES, BUFSIZE, BUFSIZE,
-                _winapi.NMPWAIT_WAIT_FOREVER, _winapi.NULL
-                )
+                _winapi.NMPWAIT_WAIT_FOREVER, _winapi.NULL)
 
         def accept(self):
             self._handle_queue.append(self._new_handle())
@@ -664,8 +685,8 @@ if sys.platform == 'win32':
                 # written data and then disconnected -- see Issue 14725.
             else:
                 try:
-                    res = _winapi.WaitForMultipleObjects(
-                        [ov.event], False, INFINITE)
+                    res = _winapi.WaitForMultipleObjects([ov.event], False,
+                                                         INFINITE)
                 except:
                     ov.cancel()
                     _winapi.CloseHandle(handle)
@@ -690,23 +711,23 @@ if sys.platform == 'win32':
             try:
                 _winapi.WaitNamedPipe(address, 1000)
                 h = _winapi.CreateFile(
-                    address, _winapi.GENERIC_READ | _winapi.GENERIC_WRITE,
-                    0, _winapi.NULL, _winapi.OPEN_EXISTING,
-                    _winapi.FILE_FLAG_OVERLAPPED, _winapi.NULL
-                    )
+                    address, _winapi.GENERIC_READ | _winapi.GENERIC_WRITE, 0,
+                    _winapi.NULL, _winapi.OPEN_EXISTING,
+                    _winapi.FILE_FLAG_OVERLAPPED, _winapi.NULL)
             except OSError as e:
-                if e.winerror not in (_winapi.ERROR_SEM_TIMEOUT,
-                                      _winapi.ERROR_PIPE_BUSY) or _check_timeout(t):
+                if e.winerror not in (
+                        _winapi.ERROR_SEM_TIMEOUT,
+                        _winapi.ERROR_PIPE_BUSY) or _check_timeout(t):
                     raise
             else:
                 break
         else:
             raise
 
-        _winapi.SetNamedPipeHandleState(
-            h, _winapi.PIPE_READMODE_MESSAGE, None, None
-            )
+        _winapi.SetNamedPipeHandleState(h, _winapi.PIPE_READMODE_MESSAGE, None,
+                                        None)
         return PipeConnection(h)
+
 
 #
 # Authentication stuff
@@ -718,38 +739,42 @@ CHALLENGE = b'#CHALLENGE#'
 WELCOME = b'#WELCOME#'
 FAILURE = b'#FAILURE#'
 
+
 def deliver_challenge(connection, authkey):
     import hmac
     if not isinstance(authkey, bytes):
-        raise ValueError(
-            "Authkey must be bytes, not {0!s}".format(type(authkey)))
+        raise ValueError("Authkey must be bytes, not {0!s}".format(
+            type(authkey)))
     message = os.urandom(MESSAGE_LENGTH)
     connection.send_bytes(CHALLENGE + message)
     digest = hmac.new(authkey, message, 'md5').digest()
-    response = connection.recv_bytes(256)        # reject large message
+    response = connection.recv_bytes(256)  # reject large message
     if response == digest:
         connection.send_bytes(WELCOME)
     else:
         connection.send_bytes(FAILURE)
         raise AuthenticationError('digest received was wrong')
 
+
 def answer_challenge(connection, authkey):
     import hmac
     if not isinstance(authkey, bytes):
-        raise ValueError(
-            "Authkey must be bytes, not {0!s}".format(type(authkey)))
-    message = connection.recv_bytes(256)         # reject large message
+        raise ValueError("Authkey must be bytes, not {0!s}".format(
+            type(authkey)))
+    message = connection.recv_bytes(256)  # reject large message
     assert message[:len(CHALLENGE)] == CHALLENGE, 'message = %r' % message
     message = message[len(CHALLENGE):]
     digest = hmac.new(authkey, message, 'md5').digest()
     connection.send_bytes(digest)
-    response = connection.recv_bytes(256)        # reject large message
+    response = connection.recv_bytes(256)  # reject large message
     if response != WELCOME:
         raise AuthenticationError('digest sent was rejected')
+
 
 #
 # Support for using xmlrpclib for serialization
 #
+
 
 class ConnectionWrapper(object):
     def __init__(self, conn, dumps, loads):
@@ -759,19 +784,24 @@ class ConnectionWrapper(object):
         for attr in ('fileno', 'close', 'poll', 'recv_bytes', 'send_bytes'):
             obj = getattr(conn, attr)
             setattr(self, attr, obj)
+
     def send(self, obj):
         s = self._dumps(obj)
         self._conn.send_bytes(s)
+
     def recv(self):
         s = self._conn.recv_bytes()
         return self._loads(s)
 
+
 def _xml_dumps(obj):
-    return xmlrpclib.dumps((obj,), None, None, None, 1).encode('utf-8')
+    return xmlrpclib.dumps((obj, ), None, None, None, 1).encode('utf-8')
+
 
 def _xml_loads(s):
-    (obj,), method = xmlrpclib.loads(s.decode('utf-8'))
+    (obj, ), method = xmlrpclib.loads(s.decode('utf-8'))
     return obj
+
 
 class XmlListener(Listener):
     def accept(self):
@@ -780,10 +810,12 @@ class XmlListener(Listener):
         obj = Listener.accept(self)
         return ConnectionWrapper(obj, _xml_dumps, _xml_loads)
 
+
 def XmlClient(*args, **kwds):
     global xmlrpclib
     import xmlrpc.client as xmlrpclib
     return ConnectionWrapper(Client(*args, **kwds), _xml_dumps, _xml_loads)
+
 
 #
 # Wait
@@ -807,7 +839,7 @@ if sys.platform == 'win32':
             else:
                 raise RuntimeError('Should not get here')
             ready.append(L[res])
-            L = L[res+1:]
+            L = L[res + 1:]
             timeout = 0
         return ready
 
@@ -926,37 +958,47 @@ else:
                         if timeout < 0:
                             return ready
 
+
 #
 # Make connection and socket objects sharable if possible
 #
 
 if sys.platform == 'win32':
+
     def reduce_connection(conn):
         handle = conn.fileno()
         with socket.fromfd(handle, socket.AF_INET, socket.SOCK_STREAM) as s:
             from . import resource_sharer
             ds = resource_sharer.DupSocket(s)
             return rebuild_connection, (ds, conn.readable, conn.writable)
+
     def rebuild_connection(ds, readable, writable):
         sock = ds.detach()
         return Connection(sock.detach(), readable, writable)
+
     reduction.register(Connection, reduce_connection)
 
     def reduce_pipe_connection(conn):
-        access = ((_winapi.FILE_GENERIC_READ if conn.readable else 0) |
-                  (_winapi.FILE_GENERIC_WRITE if conn.writable else 0))
+        access = ((_winapi.FILE_GENERIC_READ
+                   if conn.readable else 0) | (_winapi.FILE_GENERIC_WRITE
+                                               if conn.writable else 0))
         dh = reduction.DupHandle(conn.fileno(), access)
         return rebuild_pipe_connection, (dh, conn.readable, conn.writable)
+
     def rebuild_pipe_connection(dh, readable, writable):
         handle = dh.detach()
         return PipeConnection(handle, readable, writable)
+
     reduction.register(PipeConnection, reduce_pipe_connection)
 
 else:
+
     def reduce_connection(conn):
         df = reduction.DupFd(conn.fileno())
         return rebuild_connection, (df, conn.readable, conn.writable)
+
     def rebuild_connection(df, readable, writable):
         fd = df.detach()
         return Connection(fd, readable, writable)
+
     reduction.register(Connection, reduce_connection)
