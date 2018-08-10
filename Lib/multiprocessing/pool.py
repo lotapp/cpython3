@@ -195,9 +195,9 @@ class Pool(object):
         if initializer is not None and not callable(initializer):
             raise TypeError('initializer must be a callable')
 
-        self._processes = processes
-        self._pool = []
-        self._repopulate_pool()
+        self._processes = processes  # 指定的进程数
+        self._pool = []  # 列表
+        self._repopulate_pool()  # 给列表append内容的方法
 
         self._worker_handler = threading.Thread(
             target=Pool._handle_workers, args=(self, ))
@@ -244,7 +244,9 @@ class Pool(object):
         return cleaned
 
     def _repopulate_pool(self):
-        """Bring the number of pool processes up to the specified number,
+        """
+        将池进程的数量增加到指定的数量，join的时候会使用这个列表
+        Bring the number of pool processes up to the specified number,
         for use after reaping workers which have exited.
         """
         for i in range(self._processes - len(self._pool)):
@@ -255,7 +257,7 @@ class Pool(object):
                       self._wrap_exception))
             self._pool.append(w)
             w.name = w.name.replace('Process', 'PoolWorker')
-            w.daemon = True
+            w.daemon = True # pool退出后，通过pool创建的进程都会退出
             w.start()
             util.debug('added worker')
 
@@ -570,6 +572,7 @@ class Pool(object):
     def join(self):
         util.debug('joining pool')
         if self._state == RUN:
+            # 没关闭就join，这边就会抛出一个异常
             raise ValueError("Pool is still running")
         elif self._state not in (CLOSE, TERMINATE):
             raise ValueError("In unknown state")

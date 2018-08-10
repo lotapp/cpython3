@@ -2,6 +2,7 @@
 # Module providing various facilities to other parts of the package
 #
 # multiprocessing/util.py
+# https://github.com/lotapp/cpython3/blob/master/Lib/multiprocessing/util.py
 #
 # Copyright (c) 2006-2008, R Oudkerk
 # Licensed to PSF under a Contributor Agreement.
@@ -12,18 +13,29 @@ import itertools
 import sys
 import weakref
 import atexit
-import threading        # we want threading to install it's
-                        # cleanup function before multiprocessing does
+import threading  # we want threading to install it's
+# cleanup function before multiprocessing does
 from subprocess import _args_from_interpreter_flags
 
 from . import process
 
 __all__ = [
-    'sub_debug', 'debug', 'info', 'sub_warning', 'get_logger',
-    'log_to_stderr', 'get_temp_dir', 'register_after_fork',
-    'is_exiting', 'Finalize', 'ForkAwareThreadLock', 'ForkAwareLocal',
-    'close_all_fds_except', 'SUBDEBUG', 'SUBWARNING',
-    ]
+    'sub_debug',
+    'debug',
+    'info',
+    'sub_warning',
+    'get_logger',
+    'log_to_stderr',
+    'get_temp_dir',
+    'register_after_fork',
+    'is_exiting',
+    'Finalize',
+    'ForkAwareThreadLock',
+    'ForkAwareLocal',
+    'close_all_fds_except',
+    'SUBDEBUG',
+    'SUBWARNING',
+]
 
 #
 # Logging
@@ -41,24 +53,30 @@ DEFAULT_LOGGING_FORMAT = '[%(levelname)s/%(processName)s] %(message)s'
 _logger = None
 _log_to_stderr = False
 
+
 def sub_debug(msg, *args):
     if _logger:
         _logger.log(SUBDEBUG, msg, *args)
+
 
 def debug(msg, *args):
     if _logger:
         _logger.log(DEBUG, msg, *args)
 
+
 def info(msg, *args):
     if _logger:
         _logger.log(INFO, msg, *args)
+
 
 def sub_warning(msg, *args):
     if _logger:
         _logger.log(SUBWARNING, msg, *args)
 
+
 def get_logger():
     '''
+    返回`multiprocessing`专用的记录器
     Returns logger used by multiprocessing
     '''
     global _logger
@@ -84,27 +102,40 @@ def get_logger():
 
     return _logger
 
+
 def log_to_stderr(level=None):
     '''
+    打开日志记录并添加一个打印到stderr的处理程序
     Turn on logging and add a handler which prints to stderr
     '''
+    # 全局变量默认是False
     global _log_to_stderr
-    import logging
 
-    logger = get_logger()
+    import logging
+    # 日记记录转换成文本
     formatter = logging.Formatter(DEFAULT_LOGGING_FORMAT)
-    handler = logging.StreamHandler()
+    # 一个处理程序类，它将已适当格式化的日志记录写入流
+    handler = logging.StreamHandler()  # 此类不会关闭流，因为用到了sys.stdout|sys.stderr
+    # 设置格式：'[%(levelname)s/%(processName)s] %(message)s'
     handler.setFormatter(formatter)
+
+    # 返回`multiprocessing`专用的记录器
+    logger = get_logger()
+    # 添加处理程序
     logger.addHandler(handler)
 
     if level:
+        # 设置日记级别
         logger.setLevel(level)
+    # 现在log是输出到stderr的
     _log_to_stderr = True
     return _logger
+
 
 #
 # Function returning a temp directory which will be removed on exit
 #
+
 
 def get_temp_dir():
     # get name of a temp directory which will be automatically cleaned up
@@ -117,12 +148,14 @@ def get_temp_dir():
         process.current_process()._config['tempdir'] = tempdir
     return tempdir
 
+
 #
 # Support for reinitialization of objects when bootstrapping a child process
 #
 
 _afterfork_registry = weakref.WeakValueDictionary()
 _afterfork_counter = itertools.count()
+
 
 def _run_after_forkers():
     items = list(_afterfork_registry.items())
@@ -133,8 +166,10 @@ def _run_after_forkers():
         except Exception as e:
             info('after forker raised exception %s', e)
 
+
 def register_after_fork(obj, func):
     _afterfork_registry[(next(_afterfork_counter), id(obj), func)] = obj
+
 
 #
 # Finalization using weakrefs
@@ -148,8 +183,9 @@ class Finalize(object):
     '''
     Class which supports object finalization using weakrefs
     '''
+
     def __init__(self, obj, callback, args=(), kwargs=None, exitpriority=None):
-        if (exitpriority is not None) and not isinstance(exitpriority,int):
+        if (exitpriority is not None) and not isinstance(exitpriority, int):
             raise TypeError(
                 "Exitpriority ({0!r}) must be None or int, not {1!s}".format(
                     exitpriority, type(exitpriority)))
@@ -167,11 +203,14 @@ class Finalize(object):
 
         _finalizer_registry[self._key] = self
 
-    def __call__(self, wr=None,
-                 # Need to bind these locally because the globals can have
-                 # been cleared at shutdown
-                 _finalizer_registry=_finalizer_registry,
-                 sub_debug=sub_debug, getpid=os.getpid):
+    def __call__(
+            self,
+            wr=None,
+            # Need to bind these locally because the globals can have
+            # been cleared at shutdown
+            _finalizer_registry=_finalizer_registry,
+            sub_debug=sub_debug,
+            getpid=os.getpid):
         '''
         Run the callback unless it has already been called or cancelled
         '''
@@ -218,9 +257,9 @@ class Finalize(object):
         if obj is None:
             return '<%s object, dead>' % self.__class__.__name__
 
-        x = '<%s object, callback=%s' % (
-                self.__class__.__name__,
-                getattr(self._callback, '__name__', self._callback))
+        x = '<%s object, callback=%s' % (self.__class__.__name__,
+                                         getattr(self._callback, '__name__',
+                                                 self._callback))
         if self._args:
             x += ', args=' + str(self._args)
         if self._kwargs:
@@ -244,9 +283,9 @@ def _run_finalizers(minpriority=None):
         return
 
     if minpriority is None:
-        f = lambda p : p[0] is not None
+        f = lambda p: p[0] is not None
     else:
-        f = lambda p : p[0] is not None and p[0] >= minpriority
+        f = lambda p: p[0] is not None and p[0] >= minpriority
 
     # Careful: _finalizer_registry may be mutated while this function
     # is running (either by a GC run or by another thread).
@@ -270,9 +309,11 @@ def _run_finalizers(minpriority=None):
     if minpriority is None:
         _finalizer_registry.clear()
 
+
 #
 # Clean up on exit
 #
+
 
 def is_exiting():
     '''
@@ -280,9 +321,13 @@ def is_exiting():
     '''
     return _exiting or _exiting is None
 
+
 _exiting = False
 
-def _exit_function(info=info, debug=debug, _run_finalizers=_run_finalizers,
+
+def _exit_function(info=info,
+                   debug=debug,
+                   _run_finalizers=_run_finalizers,
                    active_children=process.active_children,
                    current_process=process.current_process):
     # We hold on to references to functions in the arglist due to the
@@ -324,11 +369,13 @@ def _exit_function(info=info, debug=debug, _run_finalizers=_run_finalizers,
         debug('running the remaining "atexit" finalizers')
         _run_finalizers()
 
+
 atexit.register(_exit_function)
 
 #
 # Some fork aware types
 #
+
 
 class ForkAwareThreadLock(object):
     def __init__(self):
@@ -349,9 +396,11 @@ class ForkAwareThreadLock(object):
 
 class ForkAwareLocal(threading.local):
     def __init__(self):
-        register_after_fork(self, lambda obj : obj.__dict__.clear())
+        register_after_fork(self, lambda obj: obj.__dict__.clear())
+
     def __reduce__(self):
         return type(self), ()
+
 
 #
 # Close fds except those specified
@@ -362,15 +411,19 @@ try:
 except Exception:
     MAXFD = 256
 
+
 def close_all_fds_except(fds):
     fds = list(fds) + [-1, MAXFD]
     fds.sort()
     assert fds[-1] == MAXFD, 'fd too large'
     for i in range(len(fds) - 1):
-        os.closerange(fds[i]+1, fds[i+1])
+        os.closerange(fds[i] + 1, fds[i + 1])
+
+
 #
 # Close sys.stdin and replace stdin with os.devnull
 #
+
 
 def _close_stdin():
     if sys.stdin is None:
@@ -391,9 +444,11 @@ def _close_stdin():
     except (OSError, ValueError):
         pass
 
+
 #
 # Flush standard streams, if any
 #
+
 
 def _flush_std_streams():
     try:
@@ -405,9 +460,11 @@ def _flush_std_streams():
     except (AttributeError, ValueError):
         pass
 
+
 #
 # Start a program with only specified fds kept open
 #
+
 
 def spawnv_passfds(path, args, passfds):
     import _posixsubprocess
@@ -415,9 +472,8 @@ def spawnv_passfds(path, args, passfds):
     errpipe_read, errpipe_write = os.pipe()
     try:
         return _posixsubprocess.fork_exec(
-            args, [os.fsencode(path)], True, passfds, None, None,
-            -1, -1, -1, -1, -1, -1, errpipe_read, errpipe_write,
-            False, False, None)
+            args, [os.fsencode(path)], True, passfds, None, None, -1, -1, -1,
+            -1, -1, -1, errpipe_read, errpipe_write, False, False, None)
     finally:
         os.close(errpipe_read)
         os.close(errpipe_write)

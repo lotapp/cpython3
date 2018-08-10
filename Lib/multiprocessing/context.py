@@ -5,27 +5,34 @@ import threading
 from . import process
 from . import reduction
 
-__all__ = []            # things are copied from here to __init__.py
+__all__ = []  # things are copied from here to __init__.py
 
 #
 # Exceptions
+# https://github.com/lotapp/cpython3/blob/master/Lib/multiprocessing/context.py
 #
+
 
 class ProcessError(Exception):
     pass
 
+
 class BufferTooShort(ProcessError):
     pass
+
 
 class TimeoutError(ProcessError):
     pass
 
+
 class AuthenticationError(ProcessError):
     pass
+
 
 #
 # Base type for contexts
 #
+
 
 class BaseContext(object):
 
@@ -46,8 +53,11 @@ class BaseContext(object):
             return num
 
     def Manager(self):
-        '''Returns a manager associated with a running server process
-
+        '''
+        返回与正在运行的服务器进程关联的管理器
+        可以使用诸如`Lock（）`，`Condition（）`和`Queue（）`之类的管理器方法来创建共享对象。
+        
+        Returns a manager associated with a running server process
         The managers methods such as `Lock()`, `Condition()` and `Queue()`
         can be used to create shared objects.
         '''
@@ -114,12 +124,19 @@ class BaseContext(object):
         from .queues import SimpleQueue
         return SimpleQueue(ctx=self.get_context())
 
-    def Pool(self, processes=None, initializer=None, initargs=(),
+    def Pool(self,
+             processes=None,
+             initializer=None,
+             initargs=(),
              maxtasksperchild=None):
         '''Returns a process pool object'''
         from .pool import Pool
-        return Pool(processes, initializer, initargs, maxtasksperchild,
-                    context=self.get_context())
+        return Pool(
+            processes,
+            initializer,
+            initargs,
+            maxtasksperchild,
+            context=self.get_context())
 
     def RawValue(self, typecode_or_type, *args):
         '''Returns a shared object'''
@@ -134,14 +151,17 @@ class BaseContext(object):
     def Value(self, typecode_or_type, *args, lock=True):
         '''Returns a synchronized shared object'''
         from .sharedctypes import Value
-        return Value(typecode_or_type, *args, lock=lock,
-                     ctx=self.get_context())
+        return Value(
+            typecode_or_type, *args, lock=lock, ctx=self.get_context())
 
     def Array(self, typecode_or_type, size_or_initializer, *, lock=True):
         '''Returns a synchronized shared array'''
         from .sharedctypes import Array
-        return Array(typecode_or_type, size_or_initializer, lock=lock,
-                     ctx=self.get_context())
+        return Array(
+            typecode_or_type,
+            size_or_initializer,
+            lock=lock,
+            ctx=self.get_context())
 
     def freeze_support(self):
         '''Check whether this is a fake forked process in a frozen executable.
@@ -159,7 +179,10 @@ class BaseContext(object):
         return get_logger()
 
     def log_to_stderr(self, level=None):
-        '''Turn on logging and add a handler which prints to stderr'''
+        '''
+        打开日志记录并添加一个打印到stderr的处理程序
+        Turn on logging and add a handler which prints to stderr
+        '''
         from .util import log_to_stderr
         return log_to_stderr(level)
 
@@ -215,15 +238,19 @@ class BaseContext(object):
     def _check_available(self):
         pass
 
+
 #
 # Type of default context -- underlying context can be set at most once
 #
 
+
 class Process(process.BaseProcess):
     _start_method = None
+
     @staticmethod
     def _Popen(process_obj):
         return _default_context.get_context().Process._Popen(process_obj)
+
 
 class DefaultContext(BaseContext):
     Process = Process
@@ -264,6 +291,7 @@ class DefaultContext(BaseContext):
             else:
                 return ['fork', 'spawn']
 
+
 DefaultContext.__all__ = [x for x in dir(DefaultContext) if x[0] != '_']
 
 #
@@ -274,6 +302,7 @@ if sys.platform != 'win32':
 
     class ForkProcess(process.BaseProcess):
         _start_method = 'fork'
+
         @staticmethod
         def _Popen(process_obj):
             from .popen_fork import Popen
@@ -281,6 +310,7 @@ if sys.platform != 'win32':
 
     class SpawnProcess(process.BaseProcess):
         _start_method = 'spawn'
+
         @staticmethod
         def _Popen(process_obj):
             from .popen_spawn_posix import Popen
@@ -288,6 +318,7 @@ if sys.platform != 'win32':
 
     class ForkServerProcess(process.BaseProcess):
         _start_method = 'forkserver'
+
         @staticmethod
         def _Popen(process_obj):
             from .popen_forkserver import Popen
@@ -304,6 +335,7 @@ if sys.platform != 'win32':
     class ForkServerContext(BaseContext):
         _name = 'forkserver'
         Process = ForkServerProcess
+
         def _check_available(self):
             if not reduction.HAVE_SEND_HANDLE:
                 raise ValueError('forkserver start method not available')
@@ -319,6 +351,7 @@ else:
 
     class SpawnProcess(process.BaseProcess):
         _start_method = 'spawn'
+
         @staticmethod
         def _Popen(process_obj):
             from .popen_spawn_win32 import Popen
@@ -337,8 +370,10 @@ else:
 # Force the start method
 #
 
+
 def _force_start_method(method):
     _default_context._actual_context = _concrete_contexts[method]
+
 
 #
 # Check that the current thread is spawning a child process
@@ -346,15 +381,16 @@ def _force_start_method(method):
 
 _tls = threading.local()
 
+
 def get_spawning_popen():
     return getattr(_tls, 'spawning_popen', None)
+
 
 def set_spawning_popen(popen):
     _tls.spawning_popen = popen
 
+
 def assert_spawning(obj):
     if get_spawning_popen() is None:
-        raise RuntimeError(
-            '%s objects should only be shared between processes'
-            ' through inheritance' % type(obj).__name__
-            )
+        raise RuntimeError('%s objects should only be shared between processes'
+                           ' through inheritance' % type(obj).__name__)

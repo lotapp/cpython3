@@ -27,30 +27,34 @@ _ForkingPickler = context.reduction.ForkingPickler
 
 from .util import debug, info, Finalize, register_after_fork, is_exiting
 
-#
+
+# 队列类型，使用PIPE，缓存，线程
 # Queue type using a pipe, buffer and thread
-#
-
 class Queue(object):
-
+    # ctx = multiprocessing.get_context("xxx")
+    # 上下文总共3种：spawn、fork、forkserver
     def __init__(self, maxsize=0, *, ctx):
+        # 默认使用最大容量
         if maxsize <= 0:
-            # Can raise ImportError (see issues #3770 and #23400)
             from .synchronize import SEM_VALUE_MAX as maxsize
-        self._maxsize = maxsize
+        self._maxsize = maxsize  # 指定队列大小
+        # 创建了一个PIPE匿名管道（单向）
         self._reader, self._writer = connection.Pipe(duplex=False)
-        self._rlock = ctx.Lock()
-        self._opid = os.getpid()
+        # `multiprocessing/synchronize.py > Lock`
+        self._rlock = ctx.Lock()  # 进程锁（读）【非递归】
+        self._opid = os.getpid()  # 获取PID
         if sys.platform == 'win32':
             self._wlock = None
         else:
-            self._wlock = ctx.Lock()
+            self._wlock = ctx.Lock()  # 进程锁（写）【非递归】
+        # Semaphore信号量通常用于保护容量有限的资源
+        # 控制信号量,超了就异常
         self._sem = ctx.BoundedSemaphore(maxsize)
-        # For use by concurrent.futures
+        # 不忽略PIPE管道破裂的错误
         self._ignore_epipe = False
-
+        # 线程相关操作
         self._after_fork()
-
+        # 向`_afterfork_registry`字典中注册
         if sys.platform != 'win32':
             register_after_fork(self, Queue._after_fork)
 
@@ -78,10 +82,12 @@ class Queue(object):
         self._poll = self._reader.poll
 
     def put(self, obj, block=True, timeout=None):
+        # 如果Queue已经关闭就抛异常
         assert not self._closed, "Queue {0!r} has been closed".format(self)
+        # 记录信号量的锁
         if not self._sem.acquire(block, timeout):
-            raise Full
-
+            raise Full  # 超过数量，抛个异常
+        # 条件变量允许一个或多个线程等待，直到另一个线程通知它们
         with self._notempty:
             if self._thread is None:
                 self._start_thread()
@@ -89,26 +95,32 @@ class Queue(object):
             self._notempty.notify()
 
     def get(self, block=True, timeout=None):
+        # 默认情况是阻塞（lock加锁）
         if block and timeout is None:
             with self._rlock:
                 res = self._recv_bytes()
-            self._sem.release()
+            self._sem.release()  # 信号量+1
         else:
             if block:
                 deadline = time.monotonic() + timeout
+            # 超时抛异常
             if not self._rlock.acquire(block, timeout):
                 raise Empty
             try:
                 if block:
                     timeout = deadline - time.monotonic()
+                    # 不管有没有内容都去读，超时就抛异常
                     if not self._poll(timeout):
                         raise Empty
                 elif not self._poll():
                     raise Empty
+                # 接收字节数据作为字节对象
                 res = self._recv_bytes()
-                self._sem.release()
+                self._sem.release()  # 信号量+1
             finally:
+                # 释放锁
                 self._rlock.release()
+        # 释放锁后，重新序列化数据
         # unserialize the data after having released the lock
         return _ForkingPickler.loads(res)
 
@@ -159,11 +171,10 @@ class Queue(object):
         self._buffer.clear()
         self._thread = threading.Thread(
             target=Queue._feed,
-            args=(self._buffer, self._notempty, self._send_bytes,
-                  self._wlock, self._writer.close, self._ignore_epipe,
+            args=(self._buffer, self._notempty, self._send_bytes, self._wlock,
+                  self._writer.close, self._ignore_epipe,
                   self._on_queue_feeder_error, self._sem),
-            name='QueueFeederThread'
-        )
+            name='QueueFeederThread')
         self._thread.daemon = True
 
         debug('doing self._thread.start()')
@@ -172,17 +183,15 @@ class Queue(object):
 
         if not self._joincancelled:
             self._jointhread = Finalize(
-                self._thread, Queue._finalize_join,
-                [weakref.ref(self._thread)],
-                exitpriority=-5
-                )
+                self._thread,
+                Queue._finalize_join, [weakref.ref(self._thread)],
+                exitpriority=-5)
 
         # Send sentinel to the thread queue object when garbage collected
         self._close = Finalize(
-            self, Queue._finalize_close,
-            [self._buffer, self._notempty],
-            exitpriority=10
-            )
+            self,
+            Queue._finalize_close, [self._buffer, self._notempty],
+            exitpriority=10)
 
     @staticmethod
     def _finalize_join(twr):
@@ -247,6 +256,8 @@ class Queue(object):
             except Exception as e:
                 if ignore_epipe and getattr(e, 'errno', 0) == errno.EPIPE:
                     return
+                # 由于这在守护程序线程中运行，因此在进程清理时，它使用的资源可能
+                # 变得无法使用。我们忽略在流程开始清理后发生的错误。
                 # Since this runs in a daemon thread the resources it uses
                 # may be become unusable while the process is cleaning up.
                 # We ignore errors which happen after the process has
@@ -283,8 +294,8 @@ _sentinel = object()
 # to happen.
 #
 
-class JoinableQueue(Queue):
 
+class JoinableQueue(Queue):
     def __init__(self, maxsize=0, *, ctx):
         Queue.__init__(self, maxsize, ctx=ctx)
         self._unfinished_tasks = ctx.Semaphore(0)
@@ -321,12 +332,13 @@ class JoinableQueue(Queue):
             if not self._unfinished_tasks._semlock._is_zero():
                 self._cond.wait()
 
+
 #
 # Simplified Queue type -- really just a locked pipe
 #
 
-class SimpleQueue(object):
 
+class SimpleQueue(object):
     def __init__(self, *, ctx):
         self._reader, self._writer = connection.Pipe(duplex=False)
         self._rlock = ctx.Lock()

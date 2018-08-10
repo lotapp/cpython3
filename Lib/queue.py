@@ -25,8 +25,11 @@ class Full(Exception):
 
 
 class Queue:
-    '''Create a queue object with a given maximum size.
+    '''
+    创建具有给定最大大小的队列对象
+    Create a queue object with a given maximum size.
 
+    如果maxsize <= 0，则队列大小为无限大。
     If maxsize is <= 0, the queue size is infinite.
     '''
 
