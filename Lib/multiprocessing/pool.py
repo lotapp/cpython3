@@ -171,6 +171,10 @@ class Pool(object):
     def Process(self, *args, **kwds):
         return self._ctx.Process(*args, **kwds)
 
+    # processes：进程数
+    # initializer,initargs 初始化进行的操作
+    # maxtaskperchild：每个进程执行task的最大数目
+    # contex：上下文对象
     def __init__(self,
                  processes=None,
                  initializer=None,
@@ -257,7 +261,7 @@ class Pool(object):
                       self._wrap_exception))
             self._pool.append(w)
             w.name = w.name.replace('Process', 'PoolWorker')
-            w.daemon = True # pool退出后，通过pool创建的进程都会退出
+            w.daemon = True  # pool退出后，通过pool创建的进程都会退出
             w.start()
             util.debug('added worker')
 
