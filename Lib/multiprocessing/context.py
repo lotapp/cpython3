@@ -80,7 +80,10 @@ class BaseContext(object):
         return Lock(ctx=self.get_context())
 
     def RLock(self):
-        '''Returns a recursive lock object'''
+        '''
+        返回递归锁对象
+        Returns a recursive lock object
+        '''
         from .synchronize import RLock
         return RLock(ctx=self.get_context())
 

@@ -2,6 +2,7 @@
 # Module which supports allocation of ctypes objects from shared memory
 #
 # multiprocessing/sharedctypes.py
+# https://github.com/lotapp/cpython3/blob/master/Lib/multiprocessing/sharedctypes.py
 #
 # Copyright (c) 2006-2008, R Oudkerk
 # Licensed to PSF under a Contributor Agreement.
@@ -23,23 +24,32 @@ __all__ = ['RawValue', 'RawArray', 'Value', 'Array', 'copy', 'synchronized']
 #
 
 typecode_to_type = {
-    'c': ctypes.c_char,     'u': ctypes.c_wchar,
-    'b': ctypes.c_byte,     'B': ctypes.c_ubyte,
-    'h': ctypes.c_short,    'H': ctypes.c_ushort,
-    'i': ctypes.c_int,      'I': ctypes.c_uint,
-    'l': ctypes.c_long,     'L': ctypes.c_ulong,
-    'q': ctypes.c_longlong, 'Q': ctypes.c_ulonglong,
-    'f': ctypes.c_float,    'd': ctypes.c_double
-    }
+    'c': ctypes.c_char,
+    'u': ctypes.c_wchar,
+    'b': ctypes.c_byte,
+    'B': ctypes.c_ubyte,
+    'h': ctypes.c_short,
+    'H': ctypes.c_ushort,
+    'i': ctypes.c_int,
+    'I': ctypes.c_uint,
+    'l': ctypes.c_long,
+    'L': ctypes.c_ulong,
+    'q': ctypes.c_longlong,
+    'Q': ctypes.c_ulonglong,
+    'f': ctypes.c_float,
+    'd': ctypes.c_double
+}
 
 #
 #
 #
+
 
 def _new_value(type_):
     size = ctypes.sizeof(type_)
     wrapper = heap.BufferWrapper(size)
     return rebuild_ctype(type_, wrapper, None)
+
 
 def RawValue(typecode_or_type, *args):
     '''
@@ -50,6 +60,7 @@ def RawValue(typecode_or_type, *args):
     ctypes.memset(ctypes.addressof(obj), 0, ctypes.sizeof(obj))
     obj.__init__(*args)
     return obj
+
 
 def RawArray(typecode_or_type, size_or_initializer):
     '''
@@ -67,38 +78,47 @@ def RawArray(typecode_or_type, size_or_initializer):
         result.__init__(*size_or_initializer)
         return result
 
+
 def Value(typecode_or_type, *args, lock=True, ctx=None):
     '''
+    返回Value的同步包装器
     Return a synchronization wrapper for a Value
     '''
     obj = RawValue(typecode_or_type, *args)
     if lock is False:
         return obj
+    # 默认支持Lock
     if lock in (True, None):
         ctx = ctx or get_context()
         lock = ctx.RLock()
     if not hasattr(lock, 'acquire'):
         raise AttributeError("%r has no method 'acquire'" % lock)
+    # 一系列处理
     return synchronized(obj, lock, ctx=ctx)
+
 
 def Array(typecode_or_type, size_or_initializer, *, lock=True, ctx=None):
     '''
+    返回RawArray的同步包装器
     Return a synchronization wrapper for a RawArray
     '''
     obj = RawArray(typecode_or_type, size_or_initializer)
     if lock is False:
         return obj
+    # 默认是支持Lock的
     if lock in (True, None):
         ctx = ctx or get_context()
-        lock = ctx.RLock()
+        lock = ctx.RLock()  # 递归锁
     if not hasattr(lock, 'acquire'):
         raise AttributeError("%r has no method 'acquire'" % lock)
     return synchronized(obj, lock, ctx=ctx)
+
 
 def copy(obj):
     new_obj = _new_value(type(obj))
     ctypes.pointer(new_obj)[0] = obj
     return new_obj
+
 
 def synchronized(obj, lock=None, ctx=None):
     assert not isinstance(obj, SynchronizedBase), 'object already synchronized'
@@ -118,12 +138,14 @@ def synchronized(obj, lock=None, ctx=None):
             names = [field[0] for field in cls._fields_]
             d = {name: make_property(name) for name in names}
             classname = 'Synchronized' + cls.__name__
-            scls = class_cache[cls] = type(classname, (SynchronizedBase,), d)
+            scls = class_cache[cls] = type(classname, (SynchronizedBase, ), d)
         return scls(obj, lock, ctx)
+
 
 #
 # Functions for pickling/unpickling
 #
+
 
 def reduce_ctype(obj):
     assert_spawning(obj)
@@ -131,6 +153,7 @@ def reduce_ctype(obj):
         return rebuild_ctype, (obj._type_, obj._wrapper, obj._length_)
     else:
         return rebuild_ctype, (type(obj), obj._wrapper, None)
+
 
 def rebuild_ctype(type_, wrapper, length):
     if length is not None:
@@ -141,18 +164,21 @@ def rebuild_ctype(type_, wrapper, length):
     obj._wrapper = wrapper
     return obj
 
+
 #
 # Function to create properties
 #
+
 
 def make_property(name):
     try:
         return prop_cache[name]
     except KeyError:
         d = {}
-        exec(template % ((name,)*7), d)
+        exec(template % ((name, ) * 7), d)
         prop_cache[name] = d[name]
         return d[name]
+
 
 template = '''
 def get%s(self):
@@ -177,8 +203,8 @@ class_cache = weakref.WeakKeyDictionary()
 # Synchronized wrappers
 #
 
-class SynchronizedBase(object):
 
+class SynchronizedBase(object):
     def __init__(self, obj, lock=None, ctx=None):
         self._obj = obj
         if lock:
@@ -214,7 +240,6 @@ class Synchronized(SynchronizedBase):
 
 
 class SynchronizedArray(SynchronizedBase):
-
     def __len__(self):
         return len(self._obj)
 
