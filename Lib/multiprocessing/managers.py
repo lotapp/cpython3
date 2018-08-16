@@ -492,6 +492,7 @@ listener_client = {
 
 class BaseManager(object):
     '''
+    managers的基类
     Base class for managers
     '''
     _registry = {}
