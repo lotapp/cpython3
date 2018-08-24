@@ -1,5 +1,6 @@
 
-/* Posix threads interface */
+/*  Posix线程接口 
+Posix threads interface */
 
 #include <stdlib.h>
 #include <string.h>
@@ -12,7 +13,8 @@
 #endif
 #include <signal.h>
 
-/* The POSIX spec requires that use of pthread_attr_setstacksize
+/* POSIX规范要求在定义_POSIX_THREAD_ATTR_STACKSIZE的条件下使用pthread_attr_setstacksizebe
+    The POSIX spec requires that use of pthread_attr_setstacksize
    be conditional on _POSIX_THREAD_ATTR_STACKSIZE being defined. */
 #ifdef _POSIX_THREAD_ATTR_STACKSIZE
 #ifndef THREAD_STACK_SIZE
@@ -148,8 +150,8 @@ PyThread__init_thread(void)
 #endif
 }
 
-/*
- * Thread support.
+/* 线程支持
+ * Thread support
  */
 
 
@@ -204,7 +206,7 @@ PyThread_start_new_thread(void (*func)(void *), void *arg)
     if (status != 0)
         return PYTHREAD_INVALID_THREAD_ID;
 
-    pthread_detach(th);
+    pthread_detach(th); //线程分离
 
 #if SIZEOF_PTHREAD_T <= SIZEOF_LONG
     return (unsigned long) th;
