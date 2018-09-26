@@ -5,14 +5,15 @@ import _collections_abc
 from collections import deque
 from functools import wraps
 
-__all__ = ["asynccontextmanager", "contextmanager", "closing", "nullcontext",
-           "AbstractContextManager", "AbstractAsyncContextManager",
-           "AsyncExitStack", "ContextDecorator", "ExitStack",
-           "redirect_stdout", "redirect_stderr", "suppress"]
+__all__ = [
+    "asynccontextmanager", "contextmanager", "closing", "nullcontext",
+    "AbstractContextManager", "AbstractAsyncContextManager", "AsyncExitStack",
+    "ContextDecorator", "ExitStack", "redirect_stdout", "redirect_stderr",
+    "suppress"
+]
 
 
 class AbstractContextManager(abc.ABC):
-
     """An abstract base class for context managers."""
 
     def __enter__(self):
@@ -32,7 +33,6 @@ class AbstractContextManager(abc.ABC):
 
 
 class AbstractAsyncContextManager(abc.ABC):
-
     """An abstract base class for asynchronous context managers."""
 
     async def __aenter__(self):
@@ -72,6 +72,7 @@ class ContextDecorator(object):
         def inner(*args, **kwds):
             with self._recreate_cm():
                 return func(*args, **kwds)
+
         return inner
 
 
@@ -94,8 +95,7 @@ class _GeneratorContextManagerBase:
 
 
 class _GeneratorContextManager(_GeneratorContextManagerBase,
-                               AbstractContextManager,
-                               ContextDecorator):
+                               AbstractContextManager, ContextDecorator):
     """Helper for @contextmanager decorator."""
 
     def _recreate_cm(self):
@@ -207,36 +207,37 @@ class _AsyncGeneratorContextManager(_GeneratorContextManagerBase,
                     raise
 
 
+# 装饰器方法
 def contextmanager(func):
     """@contextmanager decorator.
 
-    Typical usage:
-
-        @contextmanager
-        def some_generator(<arguments>):
-            <setup>
-            try:
-                yield <value>
-            finally:
-                <cleanup>
-
-    This makes this:
-
-        with some_generator(<arguments>) as <variable>:
-            <body>
-
-    equivalent to this:
-
+    Typical usage:方法格式
+    @contextmanager
+    def some_generator(<arguments>):
         <setup>
         try:
-            <variable> = <value>
-            <body>
+            yield <value>
         finally:
             <cleanup>
+
+    This makes this:
+    然后就可以直接使用with托管了
+    with some_generator(<arguments>) as <variable>:
+        <body>
+
+    equivalent to this:等同于
+    <setup>
+    try:
+        <variable> = <value>
+        <body>
+    finally:
+        <cleanup>
     """
+
     @wraps(func)
     def helper(*args, **kwds):
         return _GeneratorContextManager(func, args, kwds)
+
     return helper
 
 
@@ -267,9 +268,11 @@ def asynccontextmanager(func):
         finally:
             <cleanup>
     """
+
     @wraps(func)
     def helper(*args, **kwds):
         return _AsyncGeneratorContextManager(func, args, kwds)
+
     return helper
 
 
@@ -290,10 +293,13 @@ class closing(AbstractContextManager):
             f.close()
 
     """
+
     def __init__(self, thing):
         self.thing = thing
+
     def __enter__(self):
         return self.thing
+
     def __exit__(self, *exc_info):
         self.thing.close()
 
@@ -375,12 +381,14 @@ class _BaseExitStack:
     def _create_exit_wrapper(cm, cm_exit):
         def _exit_wrapper(exc_type, exc, tb):
             return cm_exit(cm, exc_type, exc, tb)
+
         return _exit_wrapper
 
     @staticmethod
     def _create_cb_wrapper(callback, *args, **kwds):
         def _exit_wrapper(exc_type, exc, tb):
             callback(*args, **kwds)
+
         return _exit_wrapper
 
     def __init__(self):
@@ -471,6 +479,7 @@ class ExitStack(_BaseExitStack, AbstractContextManager):
         # We manipulate the exception state so it behaves as though
         # we were actually nesting multiple with statements
         frame_exc = sys.exc_info()[1]
+
         def _fix_exception_context(new_exc, old_exc):
             # Context may not be correct, so find the end of the chain
             while 1:
@@ -537,12 +546,14 @@ class AsyncExitStack(_BaseExitStack, AbstractAsyncContextManager):
     def _create_async_exit_wrapper(cm, cm_exit):
         async def _exit_wrapper(exc_type, exc, tb):
             return await cm_exit(cm, exc_type, exc, tb)
+
         return _exit_wrapper
 
     @staticmethod
     def _create_async_cb_wrapper(callback, *args, **kwds):
         async def _exit_wrapper(exc_type, exc, tb):
             await callback(*args, **kwds)
+
         return _exit_wrapper
 
     async def enter_async_context(self, cm):
@@ -608,6 +619,7 @@ class AsyncExitStack(_BaseExitStack, AbstractAsyncContextManager):
         # We manipulate the exception state so it behaves as though
         # we were actually nesting multiple with statements
         frame_exc = sys.exc_info()[1]
+
         def _fix_exception_context(new_exc, old_exc):
             # Context may not be correct, so find the end of the chain
             while 1:

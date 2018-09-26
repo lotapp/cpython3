@@ -1,4 +1,5 @@
-"""RPC Implementation, originally written for the Python Idle IDE
+"""RPC
+RPC Implementation, originally written for the Python Idle IDE
 
 For security reasons, GvR requested that Idle's Python execution server process
 connect to the Idle process, which listens for the connection.  Since Idle has
