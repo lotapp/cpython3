@@ -1164,12 +1164,11 @@ class Thread:
 
 
 class Timer(Thread):
-    """Call a function after a specified number of seconds:
-
-            t = Timer(30.0, f, args=None, kwargs=None)
-            t.start()
-            t.cancel()     # stop the timer's action if it's still waiting
-
+    """在指定的秒数后调用函数：
+    Call a function after a specified number of seconds:
+    t = Timer(30.0, f, args=None, kwargs=None)
+    t.start()
+    t.cancel()     # stop the timer's action if it's still waiting
     """
 
     def __init__(self, interval, function, args=None, kwargs=None):
@@ -1178,17 +1177,18 @@ class Timer(Thread):
         self.function = function
         self.args = args if args is not None else []
         self.kwargs = kwargs if kwargs is not None else {}
-        self.finished = Event()
+        self.finished = Event()  # 事件标记
 
     def cancel(self):
-        """Stop the timer if it hasn't finished yet."""
-        self.finished.set()
+        """停止计时器 Stop the timer if it hasn't finished yet."""
+        self.finished.set()  # 事件标记为True（is_set）
 
     def run(self):
-        self.finished.wait(self.interval)
+        self.finished.wait(self.interval)  # 限时等
+        # 没有被取消就执行方法
         if not self.finished.is_set():
             self.function(*self.args, **self.kwargs)
-        self.finished.set()
+        self.finished.set()  # 完成标记
 
 
 # Special thread class to represent the main thread

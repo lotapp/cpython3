@@ -221,11 +221,11 @@ class Queue:
 
 
 class PriorityQueue(Queue):
-    '''Variant of Queue that retrieves open entries in priority order (lowest first).
-
+    '''以优先级顺序检索打开条目的队列的变体（最低的第一个）
+    Variant of Queue that retrieves open entries in priority order (lowest first).
+    条目通常是以下形式的元组:(优先级编号，数据）
     Entries are typically tuples of the form:  (priority number, data).
     '''
-
     def _init(self, maxsize):
         self.queue = []
 
