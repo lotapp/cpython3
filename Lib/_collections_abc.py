@@ -239,7 +239,7 @@ class AsyncGenerator(AsyncIterator):
 
 AsyncGenerator.register(async_generator)
 
-
+# Iterable 抽象方法
 class Iterable(metaclass=ABCMeta):
 
     __slots__ = ()
@@ -255,7 +255,7 @@ class Iterable(metaclass=ABCMeta):
             return _check_methods(C, "__iter__")
         return NotImplemented
 
-
+# Iterator 抽象方法
 class Iterator(Iterable):
 
     __slots__ = ()
