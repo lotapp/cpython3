@@ -239,7 +239,7 @@ class AsyncGenerator(AsyncIterator):
 
 AsyncGenerator.register(async_generator)
 
-# Iterable 抽象方法
+# 可迭代
 class Iterable(metaclass=ABCMeta):
 
     __slots__ = ()
@@ -255,7 +255,7 @@ class Iterable(metaclass=ABCMeta):
             return _check_methods(C, "__iter__")
         return NotImplemented
 
-# Iterator 抽象方法
+# 迭代器
 class Iterator(Iterable):
 
     __slots__ = ()
@@ -305,27 +305,35 @@ class Reversible(Iterable):
             return _check_methods(C, "__reversed__", "__iter__")
         return NotImplemented
 
-
+# 生成器
 class Generator(Iterator):
 
     __slots__ = ()
 
     def __next__(self):
-        """Return the next item from the generator.
+        """
+        从生成器返回下一个item，结束的时候抛出 StopIteration
+        Return the next item from the generator.
         When exhausted, raise StopIteration.
         """
         return self.send(None)
 
     @abstractmethod
     def send(self, value):
-        """Send a value into the generator.
+        """
+        将值发送到生成器。
+        Send a value into the generator.
+        返回下一个产生的值或抛出StopIteration。
         Return next yielded value or raise StopIteration.
         """
         raise StopIteration
 
     @abstractmethod
     def throw(self, typ, val=None, tb=None):
-        """Raise an exception in the generator.
+        """
+        在生成器中引发异常。
+        Raise an exception in the generator.
+        返回下一个产生的值或抛出StopIteration
         Return next yielded value or raise StopIteration.
         """
         if val is None:
@@ -337,7 +345,8 @@ class Generator(Iterator):
         raise val
 
     def close(self):
-        """Raise GeneratorExit inside generator.
+        """屏蔽异常
+        Raise GeneratorExit inside generator.
         """
         try:
             self.throw(GeneratorExit)
