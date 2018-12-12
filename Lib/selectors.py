@@ -4,14 +4,12 @@ This module allows high-level and efficient I/O multiplexing, built upon the
 `select` module primitives.
 """
 
-
 from abc import ABCMeta, abstractmethod
 from collections import namedtuple
 from collections.abc import Mapping
 import math
 import select
 import sys
-
 
 # generic events, that must be mapped to implementation-specific ones
 EVENT_READ = (1 << 0)
@@ -54,8 +52,10 @@ if sys.version_info >= (3, 5):
     SelectorKey.fileobj.__doc__ = 'File object registered.'
     SelectorKey.fd.__doc__ = 'Underlying file descriptor.'
     SelectorKey.events.__doc__ = 'Events that must be waited for on this file object.'
-    SelectorKey.data.__doc__ = ('''Optional opaque data associated to this file object.
+    SelectorKey.data.__doc__ = (
+        '''Optional opaque data associated to this file object.
     For example, this could be used to store a per-client session ID.''')
+
 
 class _SelectorMapping(Mapping):
     """Mapping of file objects to selector keys."""
@@ -238,8 +238,8 @@ class _BaseSelectorImpl(BaseSelector):
         key = SelectorKey(fileobj, self._fileobj_lookup(fileobj), events, data)
 
         if key.fd in self._fd_to_key:
-            raise KeyError("{!r} (FD {}) is already registered"
-                           .format(fileobj, key.fd))
+            raise KeyError("{!r} (FD {}) is already registered".format(
+                fileobj, key.fd))
 
         self._fd_to_key[key.fd] = key
         return key
@@ -310,6 +310,7 @@ class SelectSelector(_BaseSelectorImpl):
         return key
 
     if sys.platform == 'win32':
+
         def _select(self, r, w, _, timeout=None):
             r, w, x = select.select(r, w, w, timeout)
             return r, w + x, []
@@ -577,8 +578,10 @@ if hasattr(select, 'kqueue'):
             super().close()
 
 
+# 选择级别：epoll|kqueue|devpoll > poll > select
 # Choose the best implementation, roughly:
 #    epoll|kqueue|devpoll > poll > select.
+# select的一个缺点在于单个进程能够监视的文件描述符的数量存在最大限制，在Linux上一般为1024（64位=>2048）
 # select() also can't accept a FD > FD_SETSIZE (usually around 1024)
 if 'KqueueSelector' in globals():
     DefaultSelector = KqueueSelector
