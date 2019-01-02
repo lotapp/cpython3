@@ -1,3 +1,4 @@
+# https://github.com/lotapp/cpython3/blob/master/Lib/asyncio/base_events.py
 """Base implementation of event loop.
 
 The event loop can be broken up into a multiplexer (the part
@@ -539,14 +540,20 @@ class BaseEventLoop(events.AbstractEventLoop):
             sys.set_asyncgen_hooks(*old_agen_hooks)
 
     def run_until_complete(self, future):
-        """Run until the Future is done.
+        """
+        运行直到Future完成
+        Run until the Future is done.
 
+        如果参数是协程，就把它包在Task中
         If the argument is a coroutine, it is wrapped in a Task.
 
+        警告：使用相同的协程两次调用run_until_complete()将是灾难性的
+        它会将它包装在两个不同的任务中，这可能不是很好（一般只调用一次）
         WARNING: It would be disastrous to call run_until_complete()
         with the same coroutine twice -- it would wrap it in two
         different Tasks and that can't be good.
 
+        返回Future的结果，或者提出异常。
         Return the Future's result, or raise its exception.
         """
         self._check_closed()

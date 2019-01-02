@@ -208,56 +208,68 @@ class AbstractServer:
 
 
 class AbstractEventLoop:
-    """Abstract event loop."""
+    """事件循环抽象类 Abstract event loop."""
 
-    # Running and stopping the event loop.
+    # 运行和停止事件循环 Running and stopping the event loop.
 
     def run_forever(self):
-        """Run the event loop until stop() is called."""
+        """永远运行事件循环，指导调用stop方法
+        Run the event loop until stop() is called."""
         raise NotImplementedError
 
     def run_until_complete(self, future):
-        """Run the event loop until a Future is done.
-
+        """运行事件循环，直到Future完成
+        Run the event loop until a Future is done.
+        
+        返回Future的结果，或者提出异常。
         Return the Future's result, or raise its exception.
         """
         raise NotImplementedError
 
     def stop(self):
-        """Stop the event loop as soon as reasonable.
+        """尽快合理停止事件循环
+        Stop the event loop as soon as reasonable.
 
+        究竟有多快可能取决于实现，但不应该安排更多的I/O回调
         Exactly how soon that is may depend on the implementation, but
         no more I/O callbacks should be scheduled.
         """
         raise NotImplementedError
 
     def is_running(self):
-        """Return whether the event loop is currently running."""
+        """返回事件循环当前是否正在运行
+        Return whether the event loop is currently running."""
         raise NotImplementedError
 
     def is_closed(self):
-        """Returns True if the event loop was closed."""
+        """如果事件循环已关闭，则返回True
+        Returns True if the event loop was closed."""
         raise NotImplementedError
 
     def close(self):
-        """Close the loop.
+        """关闭loop Close the loop.
 
+        循环不应该再运行
         The loop should not be running.
 
+        这是幂等的，不可逆转的。
         This is idempotent and irreversible.
 
+        在此之后不应该调用其他方法。
         No other methods should be called after this one.
         """
         raise NotImplementedError
 
     async def shutdown_asyncgens(self):
-        """Shutdown all active asynchronous generators."""
+        """关闭所有活动的异步生成器
+        Shutdown all active asynchronous generators."""
         raise NotImplementedError
 
     # Methods scheduling callbacks.  All these return Handles.
-
+    # 调度回调的方法。 所有这些都返回Handles。
     def _timer_handle_cancelled(self, handle):
-        """Notification that a TimerHandle has been cancelled."""
+        """已通知TimerHandle已被取消。
+        Notification that a TimerHandle has been cancelled."""
         raise NotImplementedError
 
     def call_soon(self, callback, *args):
@@ -276,15 +288,16 @@ class AbstractEventLoop:
         raise NotImplementedError
 
     # Method scheduling a coroutine object: create a task.
-
+    # 调度协程对象的方法：创建任务。
     def create_task(self, coro):
         raise NotImplementedError
 
     # Methods for interacting with threads.
-
+    # 线程安全版call_soon方法
     def call_soon_threadsafe(self, callback, *args):
         raise NotImplementedError
 
+    # 在线程/进程池中运行（为了兼任旧代码/耗IO的代码）
     async def run_in_executor(self, executor, func, *args):
         raise NotImplementedError
 
@@ -292,7 +305,7 @@ class AbstractEventLoop:
         raise NotImplementedError
 
     # Network I/O methods returning Futures.
-
+    # 网络IO方法，返回futures
     async def getaddrinfo(self, host, port, *,
                           family=0, type=0, proto=0, flags=0):
         raise NotImplementedError
@@ -535,7 +548,7 @@ class AbstractEventLoop:
         raise NotImplementedError
 
     # Signal handling.
-
+    # 信号处理
     def add_signal_handler(self, sig, callback, *args):
         raise NotImplementedError
 
@@ -551,7 +564,7 @@ class AbstractEventLoop:
         raise NotImplementedError
 
     # Error handlers.
-
+    # 错误处理
     def get_exception_handler(self):
         raise NotImplementedError
 
