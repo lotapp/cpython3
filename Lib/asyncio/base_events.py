@@ -166,6 +166,7 @@ def _run_until_complete_cb(fut):
             # Issue #22429: run_forever() already finished, no need to
             # stop it.
             return
+    # 停止事件循环
     futures._get_loop(fut).stop()
 
 
