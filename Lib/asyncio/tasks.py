@@ -588,13 +588,16 @@ async def sleep(delay, result=None, *, loop=None):
 
 
 def ensure_future(coro_or_future, *, loop=None):
-    """Wrap a coroutine or an awaitable in a future.
-
+    """在future对象中包裹一个协程或者awaitable对象
+    Wrap a coroutine or an awaitable in a future.
+    
+    如果参数是Future，则直接返回
     If the argument is a Future, it is returned directly.
     """
     if coroutines.iscoroutine(coro_or_future):
         if loop is None:
             loop = events.get_event_loop()
+        # 传递进来的协程包装成一个Task
         task = loop.create_task(coro_or_future)
         if task._source_traceback:
             del task._source_traceback[-1]
