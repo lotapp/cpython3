@@ -1,10 +1,15 @@
-"""Base implementation of event loop.
+"""事件循环的基本实现。Base implementation of event loop.
 
+事件循环可以分解为多路复用器（该部分负责通知我们I / O事件）和事件循环，
+它包含一个多路复用器，具有调度回调的功能，立即或在将来的某个特定时间。
 The event loop can be broken up into a multiplexer (the part
 responsible for notifying us of I/O events) and the event loop proper,
 which wraps a multiplexer with functionality for scheduling callbacks,
 immediately or at a given time in the future.
 
+每当公共API采用回调时，后续位置如果/在调用它时，参数将被传递给回调。 
+这个避免实现闭包的普通lambda的扩散。不支持回调的关键字参数; 
+这是一个有意识的设计决策，为关键字参数敞开大门修改API调用本身的含义。
 Whenever a public API takes a callback, subsequent positional
 arguments will be passed to the callback if/when it is called.  This
 avoids the proliferation of trivial lambdas implementing closures.
@@ -156,6 +161,7 @@ def _ipaddr_info(host, port, family, type, proto):
 def _run_until_complete_cb(fut):
     if not fut.cancelled():
         exc = fut.exception()
+        # 启动的是loop.run_forever()
         if isinstance(exc, BaseException) and not isinstance(exc, Exception):
             # Issue #22429: run_forever() already finished, no need to
             # stop it.
@@ -600,15 +606,17 @@ class BaseEventLoop(events.AbstractEventLoop):
             # An exception is raised if the future didn't complete, so there
             # is no need to log the "destroy pending task" message
             future._log_destroy_pending = False
-
+        # 添加一个回调函数
         future.add_done_callback(_run_until_complete_cb)
         try:
             self.run_forever()
         except:
+            # 任务完成并且没有取消
             if new_task and future.done() and not future.cancelled():
-                # The coroutine raised a BaseException. Consume the exception
-                # to not log a warning, the caller doesn't have access to the
-                # local task.
+                # 协程引发了一个BaseException
+                # The coroutine raised a BaseException. 
+                # 使用异常不记录警告，调用者无权访问本地任务。
+                # Consume the exception to not log a warning, the caller doesn't have access to the local task.
                 future.exception()
             raise
         finally:

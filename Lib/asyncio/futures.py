@@ -1,5 +1,5 @@
-"""A Future class similar to the one in PEP 3148."""
-
+"""类似于PEP 3148中的Future类。 A Future class similar to the one in PEP 3148."""
+# https://www.python.org/dev/peps/pep-3148/
 __all__ = (
     'CancelledError', 'TimeoutError', 'InvalidStateError',
     'Future', 'wrap_future', 'isfuture',
@@ -179,11 +179,19 @@ class Future:
         return self._result
 
     def exception(self):
-        """Return the exception that was set on this future.
+        """返回在future设置的异常
+        Return the exception that was set on this future.
 
+        仅在future完成时才返回异常（如果未设置异常，则为None）
         The exception (or None if no exception was set) is returned only if
-        the future is done.  If the future has been cancelled, raises
-        CancelledError.  If the future isn't done yet, raises
+        the future is done. 
+        
+        如果future被取消，则引发CancelledError
+        If the future has been cancelled, raises
+        CancelledError.  
+        
+        如果future尚未完成，则引发InvalidStateError。
+        If the future isn't done yet, raises
         InvalidStateError.
         """
         if self._state == _CANCELLED:
@@ -237,8 +245,11 @@ class Future:
         self.__schedule_callbacks()
 
     def set_exception(self, exception):
-        """Mark the future done and set an exception.
+        """
+        标记future完成并设置exception。
+        Mark the future done and set an exception.
 
+        如果在调用此方法时已经完成了未来，则会引发InvalidStateError
         If the future is already done when this method is called, raises
         InvalidStateError.
         """

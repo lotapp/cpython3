@@ -1,4 +1,4 @@
-"""Support for tasks, coroutines and the scheduler."""
+"""支持Tasks、协程和任务调度 Support for tasks, coroutines and the scheduler."""
 
 __all__ = (
     'Task',
@@ -624,11 +624,13 @@ def _wrap_awaitable(awaitable):
 
 
 class _GatheringFuture(futures.Future):
-    """Helper for gather().
+    """gather帮助类 Helper for gather().
 
-    This overrides cancel() to cancel all the children and act more
-    like Task.cancel(), which doesn't immediately mark itself as
-    cancelled.
+    覆盖Future的cancel()方法，取消所有子任务更像是Task.cancel()
+    This overrides cancel() to cancel all the children and act more like Task.cancel()
+    
+    它不会立即将自己标记为取消
+    which doesn't immediately mark itself as cancelled
     """
 
     def __init__(self, children, *, loop=None):
