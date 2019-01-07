@@ -1,12 +1,25 @@
 """Support for tasks, coroutines and the scheduler."""
 
 __all__ = (
-    'Task', 'create_task',
-    'FIRST_COMPLETED', 'FIRST_EXCEPTION', 'ALL_COMPLETED',
-    'wait', 'wait_for', 'as_completed', 'sleep',
-    'gather', 'shield', 'ensure_future', 'run_coroutine_threadsafe',
-    'current_task', 'all_tasks',
-    '_register_task', '_unregister_task', '_enter_task', '_leave_task',
+    'Task',
+    'create_task',
+    'FIRST_COMPLETED',
+    'FIRST_EXCEPTION',
+    'ALL_COMPLETED',
+    'wait',
+    'wait_for',
+    'as_completed',
+    'sleep',
+    'gather',
+    'shield',
+    'ensure_future',
+    'run_coroutine_threadsafe',
+    'current_task',
+    'all_tasks',
+    '_register_task',
+    '_unregister_task',
+    '_enter_task',
+    '_leave_task',
 )
 
 import concurrent.futures
@@ -35,8 +48,13 @@ def all_tasks(loop=None):
     """Return a set of all tasks for the loop."""
     if loop is None:
         loop = events.get_running_loop()
-    return {t for t in _all_tasks
-            if futures._get_loop(t) is loop and not t.done()}
+    # NB: set(_all_tasks) is required to protect
+    # from https://bugs.python.org/issue34970 bug
+    return {
+        t
+        for t in list(_all_tasks)
+        if futures._get_loop(t) is loop and not t.done()
+    }
 
 
 def _all_tasks_compat(loop=None):
@@ -45,12 +63,13 @@ def _all_tasks_compat(loop=None):
     # method.
     if loop is None:
         loop = events.get_event_loop()
-    return {t for t in _all_tasks if futures._get_loop(t) is loop}
+    # NB: set(_all_tasks) is required to protect
+    # from https://bugs.python.org/issue34970 bug
+    return {t for t in list(_all_tasks) if futures._get_loop(t) is loop}
 
 
 class Task(futures._PyFuture):  # Inherit Python Task implementation
-                                # from a Python Future implementation.
-
+    # from a Python Future implementation.
     """A coroutine wrapped in a Future."""
 
     # An important invariant maintained while a Task not done:
@@ -74,10 +93,11 @@ class Task(futures._PyFuture):  # Inherit Python Task implementation
 
         None is returned when called not in the context of a Task.
         """
-        warnings.warn("Task.current_task() is deprecated, "
-                      "use asyncio.current_task() instead",
-                      PendingDeprecationWarning,
-                      stacklevel=2)
+        warnings.warn(
+            "Task.current_task() is deprecated, "
+            "use asyncio.current_task() instead",
+            PendingDeprecationWarning,
+            stacklevel=2)
         if loop is None:
             loop = events.get_event_loop()
         return current_task(loop)
@@ -88,10 +108,11 @@ class Task(futures._PyFuture):  # Inherit Python Task implementation
 
         By default all tasks for the current event loop are returned.
         """
-        warnings.warn("Task.all_tasks() is deprecated, "
-                      "use asyncio.all_tasks() instead",
-                      PendingDeprecationWarning,
-                      stacklevel=2)
+        warnings.warn(
+            "Task.all_tasks() is deprecated, "
+            "use asyncio.all_tasks() instead",
+            PendingDeprecationWarning,
+            stacklevel=2)
         return _all_tasks_compat(loop)
 
     def __init__(self, coro, *, loop=None):
@@ -302,7 +323,6 @@ class Task(futures._PyFuture):  # Inherit Python Task implementation
 
 _PyTask = Task
 
-
 try:
     import _asyncio
 except ImportError:
@@ -313,8 +333,11 @@ else:
 
 
 def create_task(coro):
-    """Schedule the execution of a coroutine object in a spawn task.
-
+    """
+    安排在生成任务中执行协同程序对象。
+    Schedule the execution of a coroutine object in a spawn task.
+    
+    返回一个Task对象。
     Return a Task object.
     """
     loop = events.get_running_loop()
@@ -436,10 +459,9 @@ async def _wait(fs, timeout, return_when, loop):
     def _on_completion(f):
         nonlocal counter
         counter -= 1
-        if (counter <= 0 or
-            return_when == FIRST_COMPLETED or
-            return_when == FIRST_EXCEPTION and (not f.cancelled() and
-                                                f.exception() is not None)):
+        if (counter <= 0 or return_when == FIRST_COMPLETED
+                or return_when == FIRST_EXCEPTION and
+            (not f.cancelled() and f.exception() is not None)):
             if timeout_handle is not None:
                 timeout_handle.cancel()
             if not waiter.done():
@@ -557,9 +579,8 @@ async def sleep(delay, result=None, *, loop=None):
     if loop is None:
         loop = events.get_event_loop()
     future = loop.create_future()
-    h = loop.call_later(delay,
-                        futures._set_result_unless_cancelled,
-                        future, result)
+    h = loop.call_later(delay, futures._set_result_unless_cancelled, future,
+                        result)
     try:
         return await future
     finally:
@@ -567,17 +588,13 @@ async def sleep(delay, result=None, *, loop=None):
 
 
 def ensure_future(coro_or_future, *, loop=None):
-    """
-    在future对象中包裹一个协程或者awaitable对象
-    Wrap a coroutine or an awaitable in a future.
+    """Wrap a coroutine or an awaitable in a future.
 
-    如果参数是Future，则直接返回
     If the argument is a Future, it is returned directly.
     """
     if coroutines.iscoroutine(coro_or_future):
         if loop is None:
             loop = events.get_event_loop()
-        # 传递进来的协程包装成一个Task
         task = loop.create_task(coro_or_future)
         if task._source_traceback:
             del task._source_traceback[-1]
@@ -632,27 +649,32 @@ class _GatheringFuture(futures.Future):
 
 
 def gather(*coros_or_futures, loop=None, return_exceptions=False):
-    """Return a future aggregating results from the given coroutines/futures.
+    """
+    给 协程/futures 返回一个future聚合结果
+    Return a future aggregating results from the given coroutines/futures.
 
+    协程会包裹 futures 对象，并安排在事件循环中。它们不一定按照传入的顺序排列
     Coroutines will be wrapped in a future and scheduled in the event
     loop. They will not necessarily be scheduled in the same order as
     passed in.
 
-    All futures must share the same event loop.  If all the tasks are
-    done successfully, the returned future's result is the list of
-    results (in the order of the original sequence, not necessarily
-    the order of results arrival).  If *return_exceptions* is True,
-    exceptions in the tasks are treated the same as successful
-    results, and gathered in the result list; otherwise, the first
-    raised exception will be immediately propagated to the returned
-    future.
+    所有期货必须共享相同的事件循环。All futures must share the same event loop.
 
-    Cancellation: if the outer Future is cancelled, all children (that
-    have not completed yet) are also cancelled.  If any child is
-    cancelled, this is treated as if it raised CancelledError --
-    the outer Future is *not* cancelled in this case.  (This is to
-    prevent the cancellation of one child to cause other children to
-    be cancelled.)
+    如果所有任务都成功完成，则返回的future的结果是结果列表（按原始序列的顺序，不一定是结果到达的顺序）
+    If all the tasks are done successfully, the returned future's result is the list of
+    results (in the order of the original sequence, not necessarily the order of results arrival). 
+    
+    如果* return_exceptions *为True，则任务中的异常将被视为与成功结果相同，并在结果列表中收集; 
+    If *return_exceptions* is True,exceptions in the tasks are treated the same as successful results, and gathered in the result list;
+
+    否则，第一个引发的异常将立即传播到返回的future中。otherwise, the first raised exception will be immediately propagated to the returned future.
+
+    取消：如果外部 Future 被取消，所有尚未完成的子任务也将被取消。
+    Cancellation: if the outer Future is cancelled, all children (that have not completed yet) are also cancelled. 
+
+    如果任何子项被取消，则将其视为已引发CancelledError  - 在这种情况下，外部Future未被取消。（这是为了防止一个子任务被取消导致其他子任务的取消）
+    If any child is cancelled, this is treated as if it raised CancelledError --the outer Future is *not* cancelled in this case. 
+    (This is to prevent the cancellation of one child to cause other children to be cancelled.)
     """
     if not coros_or_futures:
         if loop is None:
@@ -853,11 +875,9 @@ _py_unregister_task = _unregister_task
 _py_enter_task = _enter_task
 _py_leave_task = _leave_task
 
-
 try:
-    from _asyncio import (_register_task, _unregister_task,
-                          _enter_task, _leave_task,
-                          _all_tasks, _current_tasks)
+    from _asyncio import (_register_task, _unregister_task, _enter_task,
+                          _leave_task, _all_tasks, _current_tasks)
 except ImportError:
     pass
 else:

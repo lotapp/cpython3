@@ -2,12 +2,20 @@
 
 __all__ = (
     'AbstractEventLoopPolicy',
-    'AbstractEventLoop', 'AbstractServer',
-    'Handle', 'TimerHandle', 'SendfileNotAvailableError',
-    'get_event_loop_policy', 'set_event_loop_policy',
-    'get_event_loop', 'set_event_loop', 'new_event_loop',
-    'get_child_watcher', 'set_child_watcher',
-    '_set_running_loop', 'get_running_loop',
+    'AbstractEventLoop',
+    'AbstractServer',
+    'Handle',
+    'TimerHandle',
+    'SendfileNotAvailableError',
+    'get_event_loop_policy',
+    'set_event_loop_policy',
+    'get_event_loop',
+    'set_event_loop',
+    'new_event_loop',
+    'get_child_watcher',
+    'set_child_watcher',
+    '_set_running_loop',
+    'get_running_loop',
     '_get_running_loop',
 )
 
@@ -33,8 +41,7 @@ class Handle:
     """Object returned by callback registration methods."""
 
     __slots__ = ('_callback', '_args', '_cancelled', '_loop',
-                 '_source_traceback', '_repr', '__weakref__',
-                 '_context')
+                 '_source_traceback', '_repr', '__weakref__', '_context')
 
     def __init__(self, callback, args, loop, context=None):
         if context is None:
@@ -56,8 +63,9 @@ class Handle:
         if self._cancelled:
             info.append('cancelled')
         if self._callback is not None:
-            info.append(format_helpers._format_callback_source(
-                self._callback, self._args))
+            info.append(
+                format_helpers._format_callback_source(self._callback,
+                                                       self._args))
         if self._source_traceback:
             frame = self._source_traceback[-1]
             info.append(f'created at {frame[0]}:{frame[1]}')
@@ -141,10 +149,10 @@ class TimerHandle(Handle):
 
     def __eq__(self, other):
         if isinstance(other, TimerHandle):
-            return (self._when == other._when and
-                    self._callback == other._callback and
-                    self._args == other._args and
-                    self._cancelled == other._cancelled)
+            return (self._when == other._when
+                    and self._callback == other._callback
+                    and self._args == other._args
+                    and self._cancelled == other._cancelled)
         return NotImplemented
 
     def __ne__(self, other):
@@ -208,68 +216,56 @@ class AbstractServer:
 
 
 class AbstractEventLoop:
-    """事件循环抽象类 Abstract event loop."""
+    """Abstract event loop."""
 
-    # 运行和停止事件循环 Running and stopping the event loop.
+    # Running and stopping the event loop.
 
     def run_forever(self):
-        """永远运行事件循环，指导调用stop方法
-        Run the event loop until stop() is called."""
+        """Run the event loop until stop() is called."""
         raise NotImplementedError
 
     def run_until_complete(self, future):
-        """运行事件循环，直到Future完成
-        Run the event loop until a Future is done.
-        
-        返回Future的结果，或者提出异常。
+        """Run the event loop until a Future is done.
+
         Return the Future's result, or raise its exception.
         """
         raise NotImplementedError
 
     def stop(self):
-        """尽快合理停止事件循环
-        Stop the event loop as soon as reasonable.
+        """Stop the event loop as soon as reasonable.
 
-        究竟有多快可能取决于实现，但不应该安排更多的I/O回调
         Exactly how soon that is may depend on the implementation, but
         no more I/O callbacks should be scheduled.
         """
         raise NotImplementedError
 
     def is_running(self):
-        """返回事件循环当前是否正在运行
-        Return whether the event loop is currently running."""
+        """Return whether the event loop is currently running."""
         raise NotImplementedError
 
     def is_closed(self):
-        """如果事件循环已关闭，则返回True
-        Returns True if the event loop was closed."""
+        """Returns True if the event loop was closed."""
         raise NotImplementedError
 
     def close(self):
-        """关闭loop Close the loop.
+        """Close the loop.
 
-        循环不应该再运行
         The loop should not be running.
 
-        这是幂等的，不可逆转的。
         This is idempotent and irreversible.
 
-        在此之后不应该调用其他方法。
         No other methods should be called after this one.
         """
         raise NotImplementedError
 
     async def shutdown_asyncgens(self):
-        """关闭所有活动的异步生成器
-        Shutdown all active asynchronous generators."""
+        """Shutdown all active asynchronous generators."""
         raise NotImplementedError
 
     # Methods scheduling callbacks.  All these return Handles.
-    # 调度回调的方法。 所有这些都返回Handles。
+
     def _timer_handle_cancelled(self, handle):
-        """已通知TimerHandle已被取消。
-        Notification that a TimerHandle has been cancelled."""
+        """Notification that a TimerHandle has been cancelled."""
         raise NotImplementedError
 
     def call_soon(self, callback, *args):
@@ -288,16 +284,15 @@ class AbstractEventLoop:
         raise NotImplementedError
 
     # Method scheduling a coroutine object: create a task.
-    # 调度协程对象的方法：创建任务。
+
     def create_task(self, coro):
         raise NotImplementedError
 
     # Methods for interacting with threads.
-    # 线程安全版call_soon方法
+
     def call_soon_threadsafe(self, callback, *args):
         raise NotImplementedError
 
-    # 在线程/进程池中运行（为了兼任旧代码/耗IO的代码）
     async def run_in_executor(self, executor, func, *args):
         raise NotImplementedError
 
@@ -305,29 +300,49 @@ class AbstractEventLoop:
         raise NotImplementedError
 
     # Network I/O methods returning Futures.
-    # 网络IO方法，返回futures
-    async def getaddrinfo(self, host, port, *,
-                          family=0, type=0, proto=0, flags=0):
+
+    async def getaddrinfo(self,
+                          host,
+                          port,
+                          *,
+                          family=0,
+                          type=0,
+                          proto=0,
+                          flags=0):
         raise NotImplementedError
 
     async def getnameinfo(self, sockaddr, flags=0):
         raise NotImplementedError
 
-    async def create_connection(
-            self, protocol_factory, host=None, port=None,
-            *, ssl=None, family=0, proto=0,
-            flags=0, sock=None, local_addr=None,
-            server_hostname=None,
-            ssl_handshake_timeout=None):
+    async def create_connection(self,
+                                protocol_factory,
+                                host=None,
+                                port=None,
+                                *,
+                                ssl=None,
+                                family=0,
+                                proto=0,
+                                flags=0,
+                                sock=None,
+                                local_addr=None,
+                                server_hostname=None,
+                                ssl_handshake_timeout=None):
         raise NotImplementedError
 
-    async def create_server(
-            self, protocol_factory, host=None, port=None,
-            *, family=socket.AF_UNSPEC,
-            flags=socket.AI_PASSIVE, sock=None, backlog=100,
-            ssl=None, reuse_address=None, reuse_port=None,
-            ssl_handshake_timeout=None,
-            start_serving=True):
+    async def create_server(self,
+                            protocol_factory,
+                            host=None,
+                            port=None,
+                            *,
+                            family=socket.AF_UNSPEC,
+                            flags=socket.AI_PASSIVE,
+                            sock=None,
+                            backlog=100,
+                            ssl=None,
+                            reuse_address=None,
+                            reuse_port=None,
+                            ssl_handshake_timeout=None,
+                            start_serving=True):
         """A coroutine which creates a TCP server bound to host and port.
 
         The return value is a Server object which can be used to stop
@@ -374,15 +389,24 @@ class AbstractEventLoop:
         """
         raise NotImplementedError
 
-    async def sendfile(self, transport, file, offset=0, count=None,
-                       *, fallback=True):
+    async def sendfile(self,
+                       transport,
+                       file,
+                       offset=0,
+                       count=None,
+                       *,
+                       fallback=True):
         """Send a file through a transport.
 
         Return an amount of sent bytes.
         """
         raise NotImplementedError
 
-    async def start_tls(self, transport, protocol, sslcontext, *,
+    async def start_tls(self,
+                        transport,
+                        protocol,
+                        sslcontext,
+                        *,
                         server_side=False,
                         server_hostname=None,
                         ssl_handshake_timeout=None):
@@ -393,18 +417,25 @@ class AbstractEventLoop:
         """
         raise NotImplementedError
 
-    async def create_unix_connection(
-            self, protocol_factory, path=None, *,
-            ssl=None, sock=None,
-            server_hostname=None,
-            ssl_handshake_timeout=None):
+    async def create_unix_connection(self,
+                                     protocol_factory,
+                                     path=None,
+                                     *,
+                                     ssl=None,
+                                     sock=None,
+                                     server_hostname=None,
+                                     ssl_handshake_timeout=None):
         raise NotImplementedError
 
-    async def create_unix_server(
-            self, protocol_factory, path=None, *,
-            sock=None, backlog=100, ssl=None,
-            ssl_handshake_timeout=None,
-            start_serving=True):
+    async def create_unix_server(self,
+                                 protocol_factory,
+                                 path=None,
+                                 *,
+                                 sock=None,
+                                 backlog=100,
+                                 ssl=None,
+                                 ssl_handshake_timeout=None,
+                                 start_serving=True):
         """A coroutine which creates a UNIX Domain Socket server.
 
         The return value is a Server object, which can be used to stop
@@ -432,11 +463,18 @@ class AbstractEventLoop:
         """
         raise NotImplementedError
 
-    async def create_datagram_endpoint(self, protocol_factory,
-                                       local_addr=None, remote_addr=None, *,
-                                       family=0, proto=0, flags=0,
-                                       reuse_address=None, reuse_port=None,
-                                       allow_broadcast=None, sock=None):
+    async def create_datagram_endpoint(self,
+                                       protocol_factory,
+                                       local_addr=None,
+                                       remote_addr=None,
+                                       *,
+                                       family=0,
+                                       proto=0,
+                                       flags=0,
+                                       reuse_address=None,
+                                       reuse_port=None,
+                                       allow_broadcast=None,
+                                       sock=None):
         """A coroutine which creates a datagram endpoint.
 
         This method will try to establish the endpoint in the background.
@@ -495,14 +533,19 @@ class AbstractEventLoop:
         # close fd in pipe transport then close f and vise versa.
         raise NotImplementedError
 
-    async def subprocess_shell(self, protocol_factory, cmd, *,
+    async def subprocess_shell(self,
+                               protocol_factory,
+                               cmd,
+                               *,
                                stdin=subprocess.PIPE,
                                stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE,
                                **kwargs):
         raise NotImplementedError
 
-    async def subprocess_exec(self, protocol_factory, *args,
+    async def subprocess_exec(self,
+                              protocol_factory,
+                              *args,
                               stdin=subprocess.PIPE,
                               stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE,
@@ -543,12 +586,17 @@ class AbstractEventLoop:
     async def sock_accept(self, sock):
         raise NotImplementedError
 
-    async def sock_sendfile(self, sock, file, offset=0, count=None,
-                            *, fallback=None):
+    async def sock_sendfile(self,
+                            sock,
+                            file,
+                            offset=0,
+                            count=None,
+                            *,
+                            fallback=None):
         raise NotImplementedError
 
     # Signal handling.
-    # 信号处理
+
     def add_signal_handler(self, sig, callback, *args):
         raise NotImplementedError
 
@@ -564,7 +612,7 @@ class AbstractEventLoop:
         raise NotImplementedError
 
     # Error handlers.
-    # 错误处理
+
     def get_exception_handler(self):
         raise NotImplementedError
 
@@ -647,14 +695,14 @@ class BaseDefaultEventLoopPolicy(AbstractEventLoopPolicy):
 
         This may be None or an instance of EventLoop.
         """
-        if (self._local._loop is None and
-                not self._local._set_called and
-                isinstance(threading.current_thread(), threading._MainThread)):
+        if (self._local._loop is None
+                and not self._local._set_called and isinstance(
+                    threading.current_thread(), threading._MainThread)):
             self.set_event_loop(self.new_event_loop())
 
         if self._local._loop is None:
-            raise RuntimeError('There is no current event loop in thread %r.'
-                               % threading.current_thread().name)
+            raise RuntimeError('There is no current event loop in thread %r.' %
+                               threading.current_thread().name)
 
         return self._local._loop
 
@@ -766,7 +814,7 @@ def get_event_loop():
 
 
 def set_event_loop(loop):
-    """Equivalent to calling get_event_loop_policy().set_event_loop(loop)."""
+    """Equivalent to calling （相当于调用）get_event_loop_policy().set_event_loop(loop)."""
     get_event_loop_policy().set_event_loop(loop)
 
 
@@ -791,7 +839,6 @@ _py__get_running_loop = _get_running_loop
 _py__set_running_loop = _set_running_loop
 _py_get_running_loop = get_running_loop
 _py_get_event_loop = get_event_loop
-
 
 try:
     # get_event_loop() is one of the most frequently called
