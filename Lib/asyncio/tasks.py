@@ -148,9 +148,11 @@ class Task(futures._PyFuture):  # Inherit Python Task implementation
         return base_tasks._task_repr_info(self)
 
     def set_result(self, result):
+        # Task不支持 set_result 操作
         raise RuntimeError('Task does not support set_result operation')
 
     def set_exception(self, exception):
+        # Task不支持 set_exception 操作
         raise RuntimeError('Task does not support set_exception operation')
 
     def get_stack(self, *, limit=None):

@@ -399,8 +399,11 @@ class BaseEventLoop(events.AbstractEventLoop):
         return futures.Future(loop=self)
 
     def create_task(self, coro):
-        """Schedule a coroutine object.
-
+        """
+        传入一个协程对象
+        Schedule a coroutine object.
+        
+        返回一个Task对象
         Return a task object.
         """
         self._check_closed()
