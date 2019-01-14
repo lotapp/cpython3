@@ -685,18 +685,23 @@ class BaseEventLoop(events.AbstractEventLoop):
         return time.monotonic()
 
     def call_later(self, delay, callback, *args, context=None):
-        """Arrange for a callback to be called at a given time.
+        """安排在给定时间调用回调。
+        Arrange for a callback to be called at a given time.
 
+        返回的对象可以使用cancel()方法来取消任务
         Return a Handle: an opaque object with a cancel() method that
         can be used to cancel the call.
 
+        延迟可以是int或float，以秒为单位（相对于当前时间）
         The delay can be an int or float, expressed in seconds.  It is
         always relative to the current time.
 
+        遍历回调的时候只会调用一次，如果有两个callback方法同一时刻执行，那么优先执行取消的任务
         Each callback will be called exactly once.  If two callbacks
         are scheduled for exactly the same time, it undefined which
         will be called first.
 
+        回调后的任何位置参数都会在调用时传递给回调。
         Any positional arguments after the callback will be passed to
         the callback when it is called.
         """
@@ -707,8 +712,10 @@ class BaseEventLoop(events.AbstractEventLoop):
         return timer
 
     def call_at(self, when, callback, *args, context=None):
-        """Like call_later(), but uses an absolute time.
+        """和call_later差不多，时间使用绝对时间
+        Like call_later(), but uses an absolute time.
 
+        这个绝对时间是loop的time()方法
         Absolute time corresponds to the event loop's time() method.
         """
         self._check_closed()
@@ -723,12 +730,14 @@ class BaseEventLoop(events.AbstractEventLoop):
         return timer
 
     def call_soon(self, callback, *args, context=None):
-        """Arrange for a callback to be called as soon as possible.
+        """安排尽快调用回调。Arrange for a callback to be called as soon as possible.
 
+        它作为FIFO队列运行：在回调中调用回调他们注册的顺序。 每个回调都只调用一次
         This operates as a FIFO queue: callbacks are called in the
         order in which they are registered.  Each callback will be
         called exactly once.
 
+        回调后的任何位置参数都会在调用时传递给回调。
         Any positional arguments after the callback will be passed to
         the callback when it is called.
         """
@@ -785,14 +794,18 @@ class BaseEventLoop(events.AbstractEventLoop):
         return handle
 
     def run_in_executor(self, executor, func, *args):
+        # 检查loop是否关闭，如果关闭就抛`RuntimeError`异常
         self._check_closed()
         if self._debug:
             self._check_callback(func, 'run_in_executor')
+        # 如果不传一个executor,就会使用默认的executor
+        # 换句话说：你可以不传`线程池`
         if executor is None:
             executor = self._default_executor
             if executor is None:
                 executor = concurrent.futures.ThreadPoolExecutor()
                 self._default_executor = executor
+        # 把`concurrent.futures.Future`对象封装成`asyncio.futures.Future`对象
         return futures.wrap_future(executor.submit(func, *args), loop=self)
 
     def set_default_executor(self, executor):
