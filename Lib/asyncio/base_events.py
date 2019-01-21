@@ -618,7 +618,7 @@ class BaseEventLoop(events.AbstractEventLoop):
             # 任务完成并且没有取消
             if new_task and future.done() and not future.cancelled():
                 # 协程引发了一个BaseException
-                # The coroutine raised a BaseException. 
+                # The coroutine raised a BaseException.
                 # 使用异常不记录警告，调用者无权访问本地任务。
                 # Consume the exception to not log a warning, the caller doesn't have access to the local task.
                 future.exception()
@@ -936,13 +936,19 @@ class BaseEventLoop(events.AbstractEventLoop):
                                 local_addr=None,
                                 server_hostname=None,
                                 ssl_handshake_timeout=None):
-        """Connect to a TCP server.
+        """连接TCP服务器 Connect to a TCP server.
 
+        创建到给定Internet主机和端口的流传输连接：
+            套接字系列AF_INET或socket.AF_INET6，具体取决于主机（或指定的系列）
+            套接字类型SOCK_STREAM
+            protocol_factory必须是可调用的，返回协议实例。
         Create a streaming transport connection to a given Internet host and
         port: socket family AF_INET or socket.AF_INET6 depending on host (or
         family if specified), socket type SOCK_STREAM. protocol_factory must be
         a callable returning a protocol instance.
 
+        该方法是一个协程，它将尝试在后台建立连接。 
+        成功后，协程返回（传输，协议）
         This method is a coroutine which will try to establish the connection
         in the background.  When successful, the coroutine returns a
         (transport, protocol) pair.
@@ -969,7 +975,7 @@ class BaseEventLoop(events.AbstractEventLoop):
         if ssl_handshake_timeout is not None and not ssl:
             raise ValueError(
                 'ssl_handshake_timeout is only meaningful with ssl')
-
+        # 主要逻辑
         if host is not None or port is not None:
             if sock is not None:
                 raise ValueError(
@@ -996,14 +1002,15 @@ class BaseEventLoop(events.AbstractEventLoop):
                     raise OSError('getaddrinfo() returned empty list')
 
             exceptions = []
+            # 主要逻辑
             for family, type, proto, cname, address in infos:
                 try:
                     sock = socket.socket(family=family, type=type, proto=proto)
-                    sock.setblocking(False)
+                    sock.setblocking(False) # 设置非阻塞
                     if local_addr is not None:
                         for _, _, _, _, laddr in laddr_infos:
                             try:
-                                sock.bind(laddr)
+                                sock.bind(laddr) # 端口绑定
                                 break
                             except OSError as exc:
                                 msg = (f'error while attempting to bind on '
@@ -1017,6 +1024,7 @@ class BaseEventLoop(events.AbstractEventLoop):
                             continue
                     if self._debug:
                         logger.debug("connect %r to %r", sock, address)
+                    # 在selector_events中
                     await self.sock_connect(sock, address)
                 except OSError as exc:
                     if sock is not None:

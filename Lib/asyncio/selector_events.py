@@ -329,12 +329,12 @@ class BaseSelectorEventLoop(base_events.BaseEventLoop):
         return self._remove_reader(fd)
 
     def add_writer(self, fd, callback, *args):
-        """Add a writer callback.."""
+        """添加一个写的回调Add a writer callback.."""
         self._ensure_fd_no_transport(fd)
         return self._add_writer(fd, callback, *args)
 
     def remove_writer(self, fd):
-        """Remove a writer callback."""
+        """移除写的回调Remove a writer callback."""
         self._ensure_fd_no_transport(fd)
         return self._remove_writer(fd)
 
@@ -447,10 +447,11 @@ class BaseSelectorEventLoop(base_events.BaseEventLoop):
             self.add_writer(fd, self._sock_sendall, fut, fd, sock, data)
 
     async def sock_connect(self, sock, address):
-        """Connect to a remote socket at address.
-
+        """连接远程socket地址(协程方法)
+        Connect to a remote socket at address.
         This method is a coroutine.
         """
+        # 非阻塞检查
         if self._debug and sock.gettimeout() != 0:
             raise ValueError("the socket must be non-blocking")
 
@@ -464,7 +465,7 @@ class BaseSelectorEventLoop(base_events.BaseEventLoop):
         return await fut
 
     def _sock_connect(self, fut, sock, address):
-        fd = sock.fileno()
+        fd = sock.fileno() # 获取socket的文件描述符 <<< look
         try:
             sock.connect(address)
         except (BlockingIOError, InterruptedError):
@@ -472,8 +473,10 @@ class BaseSelectorEventLoop(base_events.BaseEventLoop):
             # connection runs in background. We have to wait until the socket
             # becomes writable to be notified when the connection succeed or
             # fails.
+            # 设置future的回调函数_sock_connect_done
             fut.add_done_callback(
                 functools.partial(self._sock_connect_done, fd))
+            # 注册selector.register
             self.add_writer(fd, self._sock_connect_cb, fut, sock, address)
         except Exception as exc:
             fut.set_exception(exc)
@@ -481,6 +484,7 @@ class BaseSelectorEventLoop(base_events.BaseEventLoop):
             fut.set_result(None)
 
     def _sock_connect_done(self, fd, fut):
+        # 取消注册selector.unregister
         self.remove_writer(fd)
 
     def _sock_connect_cb(self, fut, sock, address):
