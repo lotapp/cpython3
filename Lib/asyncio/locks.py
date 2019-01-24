@@ -71,9 +71,11 @@ class _ContextManagerMixin:
         # Deprecated, use 'async with' statement:
         #     async with lock:
         #         <block>
-        warnings.warn("'with (yield from lock)' is deprecated "
-                      "use 'async with lock' instead",
-                      DeprecationWarning, stacklevel=2)
+        warnings.warn(
+            "'with (yield from lock)' is deprecated "
+            "use 'async with lock' instead",
+            DeprecationWarning,
+            stacklevel=2)
         yield from self.acquire()
         return _ContextManager(self)
 
@@ -82,9 +84,11 @@ class _ContextManagerMixin:
         return _ContextManager(self)
 
     def __await__(self):
-        warnings.warn("'with await lock' is deprecated "
-                      "use 'async with lock' instead",
-                      DeprecationWarning, stacklevel=2)
+        warnings.warn(
+            "'with await lock' is deprecated "
+            "use 'async with lock' instead",
+            DeprecationWarning,
+            stacklevel=2)
         # To make "with await lock" work.
         return self.__acquire_ctx().__await__()
 
@@ -99,31 +103,38 @@ class _ContextManagerMixin:
 
 
 class Lock(_ContextManagerMixin):
-    """Primitive lock objects.
+    """原始锁定对象。Primitive lock objects.
 
+    原始锁是一种同步原语，在锁定时不属于特定协程。原始锁定处于“锁定”或“未锁定”两种状态之一
     A primitive lock is a synchronization primitive that is not owned
     by a particular coroutine when locked.  A primitive lock is in one
     of two states, 'locked' or 'unlocked'.
 
+    它是在解锁状态下创建的。它有两个基本方法，acquire（）和release（）。
     It is created in the unlocked state.  It has two basic methods,
-    acquire() and release().  When the state is unlocked, acquire()
-    changes the state to locked and returns immediately.  When the
-    state is locked, acquire() blocks until a call to release() in
+    acquire() and release().
+
+    当状态解锁时，acquire（）将状态更改为已锁定并立即返回
+    When the state is unlocked, acquire() changes the state to locked and returns immediately.
+
+    当状态被锁定时，acquire（）阻塞，直到另一个协同程序中对release（）的调用将其更改为已解锁，然后acquire（）调用将其重置为已锁定并返回。
+    When the state is locked, acquire() blocks until a call to release() in
     another coroutine changes it to unlocked, then the acquire() call
-    resets it to locked and returns.  The release() method should only
-    be called in the locked state; it changes the state to unlocked
-    and returns immediately.  If an attempt is made to release an
-    unlocked lock, a RuntimeError will be raised.
+    resets it to locked and returns.
 
-    When more than one coroutine is blocked in acquire() waiting for
-    the state to turn to unlocked, only one coroutine proceeds when a
-    release() call resets the state to unlocked; first coroutine which
+    只应在锁定状态下调用release（）方法; 它将状态更改为已解锁并立即返回。 如果尝试释放未锁定的锁，则会引发RuntimeError。
+    The release() method should only be called in the locked state; it changes the state to unlocked
+    and returns immediately.  If an attempt is made to release an unlocked lock, a RuntimeError will be raised.
+
+    当在acquire（）中阻止多个协程等待状态转为解锁时，当release（）调用将状态重置为解锁时，会处理在acquire（）中被阻止的第一个协同程序。
+    When more than one coroutine is blocked in acquire() waiting for the state to turn to unlocked, 
+    only one coroutine proceeds when a release() call resets the state to unlocked; first coroutine which
     is blocked in acquire() is being processed.
+    
+    acquire（）是一个协程，应该用'await'来调用。acquire() is a coroutine and should be called with 'await'.
 
-    acquire() is a coroutine and should be called with 'await'.
-
-    Locks also support the asynchronous context management protocol.
-    'async with lock' statement should be used.
+    锁还支持异步上下文管理协议。 应该使用'async with lock'语句。
+    Locks also support the asynchronous context management protocol. 'async with lock' statement should be used.
 
     Usage:
 
@@ -142,14 +153,12 @@ class Lock(_ContextManagerMixin):
         async with lock:
              ...
 
-    Lock objects can be tested for locking state:
-
+    可以测试锁定对象的锁定状态：Lock objects can be tested for locking state:
         if not lock.locked():
            await lock.acquire()
         else:
            # lock is acquired
            ...
-
     """
 
     def __init__(self, *, loop=None):
@@ -172,18 +181,21 @@ class Lock(_ContextManagerMixin):
         return self._locked
 
     async def acquire(self):
-        """Acquire a lock.
-
+        """获取lock。Acquire a lock.
+        此方法将阻塞到锁被解开，然后将lock设置为锁定并返回True
         This method blocks until the lock is unlocked, then sets it to
         locked and returns True.
         """
+        # cancelled()：任务已经取消：True；未被取消：Flase
+        # 没有加锁并且queue里面任务全部已取消，则设置lock标识为True
         if not self._locked and all(w.cancelled() for w in self._waiters):
-            self._locked = True
+            self._locked = True  # 改变标识
             return True
 
         fut = self._loop.create_future()
         self._waiters.append(fut)
 
+        # 应该在CancelledError处理之前调用最后一个块，因为我们不希望CancelledError调用_wake_up_first（）并尝试唤醒它自己
         # Finally block should be called before the CancelledError
         # handling as we don't want CancelledError to call
         # _wake_up_first() and attempt to wake up itself.
@@ -459,8 +471,10 @@ class Semaphore(_ContextManagerMixin):
         return self._value == 0
 
     async def acquire(self):
-        """Acquire a semaphore.
+        """获取信号量。Acquire a semaphore.
 
+        如果内部计数器在进入时大于零，则将其减1并立即返回True。
+        如果在进入时为零，则阻塞，等待其他协程调用release（）使其大于0，然后返回true。
         If the internal counter is larger than zero on entry,
         decrement it by one and return True immediately.  If it is
         zero on entry, block, waiting until some other coroutine has
@@ -469,16 +483,16 @@ class Semaphore(_ContextManagerMixin):
         """
         while self._value <= 0:
             fut = self._loop.create_future()
-            self._waiters.append(fut)
+            self._waiters.append(fut)  # 把当前任务放入Queue中
             try:
-                await fut
+                await fut  # 等待一个任务的完成再继续
             except:
                 # See the similar code in Queue.get.
                 fut.cancel()
                 if self._value > 0 and not fut.cancelled():
-                    self._wake_up_next()
+                    self._wake_up_next()  # 唤醒下一个任务
                 raise
-        self._value -= 1
+        self._value -= 1  # 用掉一个并发量
         return True
 
     def release(self):
@@ -486,8 +500,8 @@ class Semaphore(_ContextManagerMixin):
         When it was zero on entry and another coroutine is waiting for it to
         become larger than zero again, wake up that coroutine.
         """
-        self._value += 1
-        self._wake_up_next()
+        self._value += 1  # 恢复一个并发量
+        self._wake_up_next()  # 唤醒下一个任务
 
 
 class BoundedSemaphore(Semaphore):
